@@ -1,0 +1,22 @@
+run:
+  timeout: 5m
+  tests: false # 甚至可以设置为 true 来检查测试代码
+
+linters:
+  disable-all: true
+  enable:
+    - govet       # 官方 vet
+    - staticcheck # 高级检查 (必开)
+    - errcheck    # 检查是否忽略了错误 (如 _ = func())
+    - gosimple    # 代码简化建议
+    - ineffassign # 检查无效赋值
+    - typecheck   # 类型检查
+    - unused      # 检查未使用的变量/常量
+    - gocyclo     # 检查函数复杂度 (防止函数写得太长太复杂)
+    - gofmt       # 格式化检查
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15 # 函数圈复杂度超过 15 报错
+  errcheck:
+    check-type-assertions: true
