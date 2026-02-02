@@ -1,0 +1,64 @@
+name: Sync Main to Beta
+
+# 触发条件：当 main 分支有代码 push 时
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync-branch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: beta
+          fetch-depth: 0
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Configure Git and Signing
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.BOT_SIGNING_KEY }}
+        run: |
+          # --- 配置身份 ---
+          git config user.name "GoodBoyboy666-AutoSync"
+          git config user.email "52073881+GoodBoyboy666@users.noreply.github.com"
+
+          # --- 配置 SSH 签名 (用于 git merge -S) ---
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/signing_key
+          chmod 600 ~/.ssh/signing_key
+
+          # 配置 Git 使用该文件进行签名
+          git config gpg.format ssh
+          git config user.signingkey ~/.ssh/signing_key
+
+      - name: Merge Main into Beta
+        shell: bash
+        run: |
+          # --- 同步代码 ---
+          echo "Fetching latest main..."
+          # 此时 origin 已经是 SSH 协议 (git@github.com:...), 且 Action 已加载 Deploy Key
+          git fetch origin main
+
+          # --- 执行合并 ---
+          echo "Merging origin/main into beta..."
+
+          # -S 使用上面手动配置的 signing_key 进行签名
+          if git merge origin/main -S -m "Sync main to beta (Automated merge)"; then
+            echo "✅ Signed Merge successful."
+          else
+            echo "❌ Merge failed (likely due to conflicts)."
+            exit 1
+          fi
+
+          # --- 推送更改 ---
+          echo "Pushing to beta..."
+          # 推送时会自动使用 actions/checkout 配置好的 Deploy Key
+          git push origin beta
+          echo "✅ Pushed successfully."
