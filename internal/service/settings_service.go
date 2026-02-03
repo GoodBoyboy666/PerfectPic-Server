@@ -16,22 +16,22 @@ var (
 const DefaultValueNotFound = "||__NOT_FOUND__||"
 
 var DefaultSettings = []model.Setting{
-	{Key: consts.ConfigSiteName, Value: "Perfect Pic", Desc: "网站名称"},
-	{Key: consts.ConfigSiteDescription, Value: "A simple picture bed", Desc: "网站描述"},
-	{Key: consts.ConfigSiteLogo, Value: "", Desc: "网站Logo URL"},
-	{Key: consts.ConfigSiteFavicon, Value: "", Desc: "网站Favicon URL"},
-	{Key: consts.ConfigAllowInit, Value: "true", Desc: "是否允许初始化管理员账号"}, // 补充 AllowInit
-	{Key: consts.ConfigAllowRegister, Value: "true", Desc: "是否开放注册 (true/false)"},
-	{Key: consts.ConfigMaxUploadSize, Value: "10", Desc: "单个文件最大大小 (MB)"},
-	{Key: consts.ConfigAllowFileExtensions, Value: ".jpg,.jpeg,.png,.gif,.webp", Desc: "允许上传的文件扩展名"},
-	{Key: consts.ConfigDefaultStorageQuota, Value: "1073741824", Desc: "默认用户存储配额 (Bytes, 默认为1GB)"},
-	{Key: consts.ConfigRateLimitEnabled, Value: "true", Desc: "是否开启接口限流"},
-	{Key: consts.ConfigRateLimitAuthRPS, Value: "0.5", Desc: "认证接口每秒请求限制 (RPS)"},
-	{Key: consts.ConfigRateLimitAuthBurst, Value: "2", Desc: "认证接口突发请求限制"},
-	{Key: consts.ConfigRateLimitUploadRPS, Value: "1.0", Desc: "上传接口每秒请求限制 (RPS)"},
-	{Key: consts.ConfigRateLimitUploadBurst, Value: "5", Desc: "上传接口突发请求限制"},
-	{Key: consts.ConfigMaxRequestBodySize, Value: "2", Desc: "非文件上传接口最大请求体限制 (MB)"},
-	{Key: consts.ConfigStaticCacheControl, Value: "public, max-age=31536000", Desc: "静态资源缓存设置 (Cache-Control)"},
+	{Key: consts.ConfigSiteName, Value: "Perfect Pic", Desc: "网站名称", Category: "常规"},
+	{Key: consts.ConfigSiteDescription, Value: "A simple picture bed", Desc: "网站描述", Category: "常规"},
+	{Key: consts.ConfigSiteLogo, Value: "", Desc: "网站Logo URL", Category: "常规"},
+	{Key: consts.ConfigSiteFavicon, Value: "", Desc: "网站Favicon URL", Category: "常规"},
+	{Key: consts.ConfigAllowInit, Value: "true", Desc: "是否允许初始化管理员账号", Category: "安全"},
+	{Key: consts.ConfigAllowRegister, Value: "true", Desc: "是否开放注册", Category: "安全"},
+	{Key: consts.ConfigMaxUploadSize, Value: "10", Desc: "单个文件最大大小 (MB)", Category: "上传"},
+	{Key: consts.ConfigAllowFileExtensions, Value: ".jpg,.jpeg,.png,.gif,.webp", Desc: "允许上传的文件扩展名", Category: "上传"},
+	{Key: consts.ConfigDefaultStorageQuota, Value: "1073741824", Desc: "默认用户存储配额 (Bytes, 默认为1GB)", Category: "上传"},
+	{Key: consts.ConfigRateLimitEnabled, Value: "true", Desc: "是否开启接口限流", Category: "速率限制"},
+	{Key: consts.ConfigRateLimitAuthRPS, Value: "0.5", Desc: "认证接口每秒请求限制 (RPS)", Category: "速率限制"},
+	{Key: consts.ConfigRateLimitAuthBurst, Value: "2", Desc: "认证接口突发请求限制", Category: "速率限制"},
+	{Key: consts.ConfigRateLimitUploadRPS, Value: "1.0", Desc: "上传接口每秒请求限制 (RPS)", Category: "速率限制"},
+	{Key: consts.ConfigRateLimitUploadBurst, Value: "5", Desc: "上传接口突发请求限制", Category: "速率限制"},
+	{Key: consts.ConfigMaxRequestBodySize, Value: "2", Desc: "非文件上传接口最大请求体限制 (MB)", Category: "服务"},
+	{Key: consts.ConfigStaticCacheControl, Value: "public, max-age=31536000", Desc: "静态资源缓存设置 (Cache-Control)", Category: "服务"},
 }
 
 func ClearCache() {
@@ -47,6 +47,12 @@ func InitializeSettings() {
 		db.DB.Model(&model.Setting{}).Where("key = ?", def.Key).Count(&count)
 		if count == 0 {
 			db.DB.Create(&def)
+		} else {
+			// 同步更新 Category 和 Desc
+			db.DB.Model(&model.Setting{}).Where("key = ?", def.Key).Updates(map[string]interface{}{
+				"category": def.Category,
+				"desc":     def.Desc,
+			})
 		}
 	}
 }
