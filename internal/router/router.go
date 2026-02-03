@@ -30,6 +30,8 @@ func InitRouter(r *gin.Engine) {
 		api.POST("/login", authLimiter, handler.Login)
 		api.POST("/register", authLimiter, handler.Register)
 
+		api.GET("/auth/email-verify", handler.EmailVerify)
+
 		api.GET("/register", handler.GetRegisterState)
 		api.GET("/captcha", handler.GetCaptcha)
 		api.GET("/webinfo", handler.GetWebInfo)
@@ -71,6 +73,7 @@ func InitRouter(r *gin.Engine) {
 
 			adminGroup.GET("/settings", admin.GetSettings)
 			adminGroup.PATCH("/settings", admin.UpdateSettings)
+			adminGroup.POST("/email/test", admin.SendTestEmail)
 
 			// 用户管理
 			adminGroup.GET("/users", admin.GetUserList)

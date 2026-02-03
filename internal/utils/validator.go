@@ -41,6 +41,17 @@ func ValidatePassword(password string) (bool, string) {
 	return true, ""
 }
 
+// ValidateEmail checks if the email is valid.
+func ValidateEmail(email string) (bool, string) {
+	// 简单的邮箱正则验证
+	regex := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
+	matched, _ := regexp.MatchString(regex, email)
+	if !matched {
+		return false, "邮箱格式不正确"
+	}
+	return true, ""
+}
+
 // ValidateImageContent checks if the file content matches the extension.
 func ValidateImageContent(reader io.ReadSeeker, ext string) (bool, string) {
 	buffer := make([]byte, 512)
