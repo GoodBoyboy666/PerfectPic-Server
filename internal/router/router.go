@@ -33,6 +33,9 @@ func InitRouter(r *gin.Engine) {
 		api.GET("/auth/email-verify", handler.EmailVerify)
 		api.GET("/auth/email-change-verify", handler.EmailChangeVerify)
 
+		api.POST("/auth/password/reset/request", handler.RequestPasswordReset)
+		api.POST("/auth/password/reset", handler.ResetPassword)
+
 		api.GET("/register", handler.GetRegisterState)
 		api.GET("/captcha", handler.GetCaptcha)
 		api.GET("/webinfo", handler.GetWebInfo)

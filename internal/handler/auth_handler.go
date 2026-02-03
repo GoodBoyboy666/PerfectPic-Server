@@ -254,6 +254,106 @@ func EmailChangeVerify(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "邮箱修改成功"})
 }
 
+// RequestPasswordReset 请求重置密码
+func RequestPasswordReset(c *gin.Context) {
+	var req struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "邮箱格式错误"})
+		return
+	}
+
+	var user model.User
+	// 查找用户
+	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		// 为了安全，即使用户不存在也提示发送成功，防止探测邮箱是否存在
+		c.JSON(http.StatusOK, gin.H{"message": "如果该邮箱已注册，重置密码邮件将发送至您的邮箱"})
+		return
+	}
+
+	// 检查用户状态
+	if user.Status == 2 || user.Status == 3 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "该账号已被封禁或停用，无法重置密码"})
+		return
+	}
+
+	// 生成 Token (内存中)
+	token := service.GenerateForgetPasswordToken(user.ID)
+
+	// 生成链接
+	baseURL := service.GetString(consts.ConfigBaseURL)
+	if baseURL == "" {
+		baseURL = "http://localhost"
+	}
+	if len(baseURL) > 0 && baseURL[len(baseURL)-1] == '/' {
+		baseURL = baseURL[:len(baseURL)-1]
+	}
+	// 前端重置密码页面: /auth/reset-password?token=xxx
+	resetUrl := fmt.Sprintf("%s/auth/reset-password?token=%s", baseURL, token)
+
+	// 发送邮件
+	go func() {
+		_ = service.SendPasswordResetEmail(user.Email, user.Username, resetUrl)
+	}()
+
+	c.JSON(http.StatusOK, gin.H{"message": "如果该邮箱已注册，重置密码邮件将发送至您的邮箱"})
+}
+
+// ResetPassword 执行重置密码
+func ResetPassword(c *gin.Context) {
+	var req struct {
+		Token       string `json:"token" binding:"required"`
+		NewPassword string `json:"new_password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
+		return
+	}
+
+	if ok, msg := utils.ValidatePassword(req.NewPassword); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+		return
+	}
+
+	// 验证 Token
+	userId, valid := service.VerifyForgetPasswordToken(req.Token)
+	if !valid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "重置链接无效或已过期"})
+		return
+	}
+
+	var user model.User
+	if err := db.DB.First(&user, userId).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+		return
+	}
+
+	// 再次检查状态
+	if user.Status == 2 || user.Status == 3 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "该账号已被封禁或停用"})
+		return
+	}
+
+	// 更新密码
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "密码加密失败"})
+		return
+	}
+
+	user.Password = string(hashedPassword)
+	// 成功通过邮箱重置密码，视为邮箱有效
+	user.EmailVerified = true
+
+	if err := db.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "密码重置失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "密码重置成功，请使用新密码登录"})
+}
+
 func GetRegisterState(c *gin.Context) {
 	allowRegister := service.GetBool(consts.ConfigAllowRegister)
 	c.JSON(http.StatusOK, gin.H{

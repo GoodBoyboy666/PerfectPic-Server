@@ -156,6 +156,57 @@ func SendEmailChangeVerification(toEmail, username, oldEmail, newEmail, verifyUr
 	return smtp.SendMail(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
 }
 
+// SendPasswordResetEmail 发送重置密码邮件
+func SendPasswordResetEmail(toEmail, username, resetUrl string) error {
+	// 检查是否开启 SMTP
+	if !GetBool(consts.ConfigEnableSMTP) {
+		return nil
+	}
+
+	cfg := config.Get()
+	if cfg.SMTP.Host == "" {
+		return nil
+	}
+
+	auth := smtp.PlainAuth("", cfg.SMTP.Username, cfg.SMTP.Password, cfg.SMTP.Host)
+
+	siteName := GetString(consts.ConfigSiteName)
+	if siteName == "" {
+		siteName = "Perfect Pic"
+	}
+
+	// 构建邮件内容
+	subject := fmt.Sprintf("Subject: %s - 重置密码请求\n", siteName)
+	contentType := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
+
+	// 读取模板文件
+	templatePath := "config/reset-password-mail.html"
+	contentBytes, err := os.ReadFile(templatePath)
+	var body string
+	if err != nil {
+		body = fmt.Sprintf(`
+			<h1>重置密码 - %s</h1>
+			<p>请点击链接重置密码: <a href="%s">%s</a></p>
+			<p>有效期15分钟。</p>
+		`, siteName, resetUrl, resetUrl)
+	} else {
+		body = string(contentBytes)
+		body = strings.ReplaceAll(body, "{{site_name}}", siteName)
+		body = strings.ReplaceAll(body, "{{username}}", username)
+		body = strings.ReplaceAll(body, "{{reset_url}}", resetUrl)
+	}
+
+	msg := []byte(subject + contentType + body)
+
+	addr := fmt.Sprintf("%s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
+
+	if cfg.SMTP.SSL {
+		return sendMailWithSSL(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
+	}
+
+	return smtp.SendMail(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
+}
+
 func sendMailWithSSL(addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
 	cfg := config.Get()
 
