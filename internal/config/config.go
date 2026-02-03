@@ -23,6 +23,7 @@ type Config struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	Upload   UploadConfig   `mapstructure:"upload"`
+	SMTP     SMTPConfig     `mapstructure:"smtp"`
 }
 
 type ServerConfig struct {
@@ -50,6 +51,15 @@ type UploadConfig struct {
 	URLPrefix       string `mapstructure:"url_prefix"`
 	AvatarPath      string `mapstructure:"avatar_path"`
 	AvatarURLPrefix string `mapstructure:"avatar_url_prefix"`
+}
+
+type SMTPConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	From     string `mapstructure:"from"`
+	SSL      bool   `mapstructure:"ssl"`
 }
 
 // Get 获取当前配置的快照（高性能无锁）
@@ -90,6 +100,12 @@ func InitConfig() {
 	v.SetDefault("database.name", "perfect_pic")
 	v.SetDefault("jwt.secret", "")
 	v.SetDefault("jwt.expiration_hours", 24)
+	v.SetDefault("smtp.host", "")
+	v.SetDefault("smtp.port", 587)
+	v.SetDefault("smtp.username", "")
+	v.SetDefault("smtp.password", "")
+	v.SetDefault("smtp.from", "")
+	v.SetDefault("smtp.ssl", false)
 
 	// 读取配置文件
 	if err := v.ReadInConfig(); err != nil {

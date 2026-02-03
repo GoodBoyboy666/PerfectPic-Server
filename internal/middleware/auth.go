@@ -49,7 +49,7 @@ func JWTAuth() gin.HandlerFunc {
 		}
 
 		//解析 Token
-		claims, err := utils.ParseToken(parts[1])
+		claims, err := utils.ParseLoginToken(parts[1])
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token 无效或已过期"})
 			c.Abort()

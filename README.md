@@ -152,6 +152,14 @@ upload:
   url_prefix: "/imgs/"
   avatar_path: "uploads/avatars"
   avatar_url_prefix: "/avatars/"
+
+smtp:
+  host: "smtp.example.com"
+  port: 587
+  username: "examle@example.com"
+  password: "your_smtp_password"
+  from: "examle@example.com"
+  ssl: false
 ```
 
 ### 环境变量

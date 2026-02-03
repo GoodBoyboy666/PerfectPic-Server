@@ -14,11 +14,23 @@ const (
 	// ConfigSiteFavicon 网站Favicon URL
 	ConfigSiteFavicon = "site_favicon"
 
+	// ConfigBaseURL 网站基础URL (例如 http://localhost:8080)
+	ConfigBaseURL = "base_url"
+
 	// ConfigAllowInit 是否允许初始化管理员账号 (true/false)
 	ConfigAllowInit = "allow_init"
 
 	// ConfigAllowRegister 是否开放注册 (true/false)
 	ConfigAllowRegister = "allow_register"
+
+	// ConfigEnableSMTP 是否启用SMTP发送邮件 (true/false)
+	ConfigEnableSMTP = "enable_smtp"
+
+	// ConfigBlockUnverifiedUsers 是否阻止未验证邮箱用户登录 (true/false)
+	ConfigBlockUnverifiedUsers = "block_unverified_users"
+
+	// ConfigRequireEmailVerification 注册是否强制要求验证邮箱 (true/false)
+	ConfigRequireEmailVerification = "require_email_verification"
 
 	// ConfigMaxUploadSize 图片最大上传限制 (MB)
 	ConfigMaxUploadSize = "max_upload_size"

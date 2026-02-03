@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"perfect-pic-server/internal/db"
@@ -71,4 +72,21 @@ func UpdateSettings(c *gin.Context) {
 		"message": "配置更新成功",
 		"count":   len(reqs),
 	})
+}
+
+func SendTestEmail(c *gin.Context) {
+	var req struct {
+		ToEmail string `json:"to_email" binding:"required,email"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "邮箱格式不正确"})
+		return
+	}
+
+	if err := service.SendTestEmail(req.ToEmail); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("发送失败: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "测试邮件已发送"})
 }

@@ -1,0 +1,30 @@
+server:
+  port: "8080"
+  mode: "release"
+
+database:
+  type: "sqlite" # sqlite, mysql, postgres
+  filename: "config/perfect_pic.db" # for sqlite
+  host: "127.0.0.1" # for mysql/postgres
+  port: "3306"
+  user: "root"
+  password: "password"
+  name: "perfect_pic"
+
+jwt:
+  secret: "change_this_to_a_secure_random_string"
+  expiration_hours: 24
+
+upload:
+  path: "uploads/imgs"
+  url_prefix: "/imgs/"
+  avatar_path: "uploads/avatars"
+  avatar_url_prefix: "/avatars/"
+
+smtp:
+  host: "smtp.example.com"
+  port: 587
+  username: "examle@example.com"
+  password: "your_smtp_password"
+  from: "examle@example.com"
+  ssl: false

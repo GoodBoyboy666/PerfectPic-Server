@@ -152,10 +152,12 @@ func CreateUser(c *gin.Context) {
 
 // UpdateUserRequest 修改用户信息结构体
 type UpdateUserRequest struct {
-	Username     *string `json:"username"`
-	Password     *string `json:"password"`
-	StorageQuota *int64  `json:"storage_quota"`
-	Status       *int    `json:"status"`
+	Username      *string `json:"username"`
+	Password      *string `json:"password"`
+	Email         *string `json:"email"`
+	EmailVerified *bool   `json:"email_verified"`
+	StorageQuota  *int64  `json:"storage_quota"`
+	Status        *int    `json:"status"`
 }
 
 // UpdateUser 修改用户信息
@@ -179,6 +181,22 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
+	// 额外检查是否被其他用户占用
+	if val, ok := updates["email"]; ok {
+		if newEmail, ok := val.(string); ok {
+			var count int64
+			// 检查是否有其他用户使用了该邮箱
+			db.DB.Model(&model.User{}).Where("email = ? AND id != ?", newEmail, id).Count(&count)
+			if count > 0 {
+				c.JSON(http.StatusConflict, gin.H{"error": "该邮箱已被其他用户占用"})
+				return
+			}
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的邮箱地址"})
+			return
+		}
+	}
+
 	var user model.User
 	if err := db.DB.First(&user, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
@@ -200,40 +218,88 @@ func UpdateUser(c *gin.Context) {
 func prepareUserUpdates(req UpdateUserRequest) (map[string]interface{}, string) {
 	updates := make(map[string]interface{})
 
+	if err := validateAndUpdateUsername(req, updates); err != "" {
+		return nil, err
+	}
+	if err := validateAndUpdatePassword(req, updates); err != "" {
+		return nil, err
+	}
+	if err := validateAndUpdateEmail(req, updates); err != "" {
+		return nil, err
+	}
+	if err := validateAndUpdateEmailVerified(req, updates); err != "" {
+		return nil, err
+	}
+	if err := validateAndUpdateStorageQuota(req, updates); err != "" {
+		return nil, err
+	}
+	if err := validateAndUpdateStatus(req, updates); err != "" {
+		return nil, err
+	}
+
+	return updates, ""
+}
+
+func validateAndUpdateUsername(req UpdateUserRequest, updates map[string]interface{}) string {
 	if req.Username != nil && *req.Username != "" {
 		if ok, msg := utils.ValidateUsername(*req.Username); !ok {
-			return nil, msg
+			return msg
 		}
 		updates["username"] = *req.Username
 	}
+	return ""
+}
 
+func validateAndUpdatePassword(req UpdateUserRequest, updates map[string]interface{}) string {
 	if req.Password != nil && *req.Password != "" {
 		if ok, msg := utils.ValidatePassword(*req.Password); !ok {
-			return nil, msg
+			return msg
 		}
 		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
 		updates["password"] = string(hashedPassword)
 	}
+	return ""
+}
 
+func validateAndUpdateEmail(req UpdateUserRequest, updates map[string]interface{}) string {
+	if req.Email != nil && *req.Email != "" {
+		if ok, msg := utils.ValidateEmail(*req.Email); !ok {
+			return msg
+		}
+		updates["email"] = *req.Email
+	}
+	return ""
+}
+
+func validateAndUpdateEmailVerified(req UpdateUserRequest, updates map[string]interface{}) string {
+	if req.EmailVerified != nil {
+		updates["email_verified"] = *req.EmailVerified
+	}
+	return ""
+}
+
+func validateAndUpdateStorageQuota(req UpdateUserRequest, updates map[string]interface{}) string {
 	if req.StorageQuota != nil {
 		if *req.StorageQuota == -1 {
 			updates["storage_quota"] = nil
 		} else if *req.StorageQuota >= 0 {
 			updates["storage_quota"] = *req.StorageQuota
 		} else {
-			return nil, "存储配额不能为负数（-1除外）"
+			return "存储配额不能为负数（-1除外）"
 		}
 	}
+	return ""
+}
 
+func validateAndUpdateStatus(req UpdateUserRequest, updates map[string]interface{}) string {
 	if req.Status != nil {
 		if *req.Status == 1 || *req.Status == 2 {
 			updates["status"] = *req.Status
 		} else {
-			return nil, "无效的用户状态"
+			return "无效的用户状态"
 		}
 	}
-
-	return updates, ""
+	return ""
 }
 
 // UpdateUserAvatar 更新用户头像
@@ -331,10 +397,19 @@ func DeleteUser(c *gin.Context) {
 		err = db.DB.Transaction(func(tx *gorm.DB) error {
 			var user model.User
 			tx.First(&user, id)
-			// 修改名字，释放唯一索引占用，并标记为状态3(停用)
-			newUsername := fmt.Sprintf("%s_del_%d", user.Username, time.Now().Unix())
+			// 修改名字和邮箱，释放唯一索引占用，并标记为状态3(停用)
+			// 邮箱格式: delete_<timestamp>_<original_email>
+			// 注意长度限制 255
+			timestamp := time.Now().Unix()
+			newUsername := fmt.Sprintf("%s_del_%d", user.Username, timestamp)
+			newEmail := fmt.Sprintf("del_%d_%s", timestamp, user.Email)
+			if len(newEmail) > 255 {
+				newEmail = newEmail[:255]
+			}
+
 			tx.Model(&user).Updates(map[string]interface{}{
 				"username": newUsername,
+				"email":    newEmail,
 				"status":   3,
 			})
 			tx.Delete(&user)

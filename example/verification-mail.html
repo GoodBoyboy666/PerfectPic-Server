@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>验证您的邮箱</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+        <h2 style="color: #333;">欢迎加入 {{site_name}}!</h2>
+        <p>亲爱的 <strong>{{username}}</strong>,</p>
+        <p>感谢您的注册。为了保障您的账户安全，我们需要验证您的电子邮箱地址。</p>
+        <p>请点击下方的按钮完成验证：</p>
+        <p style="text-align: center;">
+            <a href="{{verify_url}}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: #ffffff; text-decoration: none; border-radius: 5px;">验证邮箱</a>
+        </p>
+        <p>如果按钮无法点击，请复制以下链接到浏览器中打开：</p>
+        <p><a href="{{verify_url}}">{{verify_url}}</a></p>
+        <p style="font-size: 12px; color: #999;">此邮件由系统自动发送，请勿回复。</p>
+    </div>
+</body>
+</html>

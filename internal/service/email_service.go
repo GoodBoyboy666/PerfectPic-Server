@@ -1,0 +1,158 @@
+package service
+
+import (
+	"crypto/tls"
+	"fmt"
+	"net/smtp"
+	"os"
+	"perfect-pic-server/internal/config"
+	"perfect-pic-server/internal/consts"
+	"strings"
+	"time"
+)
+
+// SendVerificationEmail 发送验证邮件
+func SendVerificationEmail(toEmail, username, verifyUrl string) error {
+	// 检查是否开启 SMTP
+	if !GetBool(consts.ConfigEnableSMTP) {
+		return nil
+	}
+
+	cfg := config.Get()
+	if cfg.SMTP.Host == "" {
+		return nil
+	}
+
+	auth := smtp.PlainAuth("", cfg.SMTP.Username, cfg.SMTP.Password, cfg.SMTP.Host)
+
+	siteName := GetString(consts.ConfigSiteName)
+	if siteName == "" {
+		siteName = "Perfect Pic"
+	}
+
+	// 构建邮件内容
+	subject := fmt.Sprintf("Subject: 欢迎注册 %s - 请验证您的邮箱\n", siteName)
+	contentType := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
+
+	// 读取模板文件
+	templatePath := "config/verification-mail.html"
+	contentBytes, err := os.ReadFile(templatePath)
+	var body string
+	if err != nil {
+		// 如果模板读取失败，使用默认简单模板
+		body = fmt.Sprintf(`
+			<h1>欢迎加入 %s</h1>
+			<p>请点击链接验证邮箱: <a href="%s">%s</a></p>
+		`, siteName, verifyUrl, verifyUrl)
+	} else {
+		body = string(contentBytes)
+		body = strings.ReplaceAll(body, "{{site_name}}", siteName)
+		body = strings.ReplaceAll(body, "{{username}}", username)
+		body = strings.ReplaceAll(body, "{{verify_url}}", verifyUrl)
+	}
+
+	msg := []byte(subject + contentType + body)
+
+	addr := fmt.Sprintf("%s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
+
+	// 如果配置了 SSL (通常是端口 465)，需要使用 tls 连接
+	if cfg.SMTP.SSL {
+		return sendMailWithSSL(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
+	}
+
+	// 默认使用 STARTTLS (通常是端口 587 或 25)
+	return smtp.SendMail(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
+}
+
+// SendTestEmail 发送测试邮件
+func SendTestEmail(toEmail string) error {
+	cfg := config.Get()
+	if cfg.SMTP.Host == "" {
+		return fmt.Errorf("SMTP Host 未配置")
+	}
+
+	auth := smtp.PlainAuth("", cfg.SMTP.Username, cfg.SMTP.Password, cfg.SMTP.Host)
+
+	siteName := GetString(consts.ConfigSiteName)
+	if siteName == "" {
+		siteName = "Perfect Pic"
+	}
+
+	subject := fmt.Sprintf("Subject: %s SMTP 测试邮件\n", siteName)
+	contentType := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
+	body := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<body>
+    <h3>SMTP 配置测试成功</h3>
+    <p>这是一封来自 <strong>%s</strong> 的测试邮件。</p>
+    <p>如果您收到此邮件，说明您的 SMTP 服务配置正确。</p>
+    <p>时间: %s</p>
+</body>
+</html>
+`, siteName, time.Now().Format("2006-01-02 15:04:05"))
+
+	msg := []byte(subject + contentType + body)
+
+	addr := fmt.Sprintf("%s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
+
+	if cfg.SMTP.SSL {
+		return sendMailWithSSL(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
+	}
+
+	return smtp.SendMail(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
+}
+
+func sendMailWithSSL(addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
+	cfg := config.Get()
+
+	// 建立 TLS 连接
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: false,
+		ServerName:         cfg.SMTP.Host,
+	}
+
+	conn, err := tls.Dial("tcp", addr, tlsConfig)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	client, err := smtp.NewClient(conn, cfg.SMTP.Host)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	// 认证
+	if auth != nil {
+		if ok, _ := client.Extension("AUTH"); ok {
+			if err = client.Auth(auth); err != nil {
+				return err
+			}
+		}
+	}
+
+	// 发送流程
+	if err = client.Mail(from); err != nil {
+		return err
+	}
+	for _, addr := range to {
+		if err = client.Rcpt(addr); err != nil {
+			return err
+		}
+	}
+	w, err := client.Data()
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(msg)
+	if err != nil {
+		return err
+	}
+	err = w.Close()
+	if err != nil {
+		return err
+	}
+	return client.Quit()
+}
