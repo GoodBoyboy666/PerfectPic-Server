@@ -13,7 +13,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"perfect-pic-server/internal/config"
-	"perfect-pic-server/internal/consts"
 	"perfect-pic-server/internal/db"
 	"perfect-pic-server/internal/middleware"
 	"perfect-pic-server/internal/router"
@@ -27,6 +26,12 @@ import (
 
 //go:embed all:frontend
 var frontendFS embed.FS
+
+var (
+	AppName     = "Perfect Pic Server"
+	AppVersion  = "dev"
+	UIGitCommit = "unknown"
+)
 
 func main() {
 
@@ -143,17 +148,13 @@ func main() {
 }
 
 func printWelcomeMessage(distFS fs.FS) {
-	frontendVersion := "未知版本"
-	if vData, err := fs.ReadFile(distFS, "version"); err == nil {
-		frontendVersion = strings.TrimSpace(string(vData))
-	}
 
 	fmt.Println()
 	fmt.Println(" ┌───────────────────────────────────────────────────────┐")
-	fmt.Printf(" │   🚀  %s\n", consts.ApplicationName)
+	fmt.Printf(" │   🚀  %s\n", AppName)
 	fmt.Println(" ├───────────────────────────────────────────────────────┤")
-	fmt.Printf(" │   📦  后端版本 : %s\n", consts.ApplicationVersion)
-	fmt.Printf(" │   💻  前端版本 : %s\n", frontendVersion)
+	fmt.Printf(" │   📦  后端版本 : %s\n", AppVersion)
+	fmt.Printf(" │   💻  前端构建 : %s\n", UIGitCommit)
 	fmt.Printf(" │   🔥  服务端口 : %s\n", config.Get().Server.Port)
 	fmt.Println(" └───────────────────────────────────────────────────────┘")
 	fmt.Println()
