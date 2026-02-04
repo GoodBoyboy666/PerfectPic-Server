@@ -154,5 +154,5 @@ jobs:
         with:
           files: build_artifacts/*
           draft: true
-          prerelease: ${{ steps.check_prerelease.outputs.IS_PRERELEASE }}
+          prerelease: ${{ steps.meta.outputs.IS_PRERELEASE }}
           generate_release_notes: true
