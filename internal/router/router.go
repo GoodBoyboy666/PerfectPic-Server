@@ -5,6 +5,7 @@ import (
 	"perfect-pic-server/internal/handler"
 	"perfect-pic-server/internal/handler/admin"
 	"perfect-pic-server/internal/middleware"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,10 +31,12 @@ func InitRouter(r *gin.Engine) {
 		api.POST("/login", authLimiter, handler.Login)
 		api.POST("/register", authLimiter, handler.Register)
 
-		api.GET("/auth/email-verify", handler.EmailVerify)
-		api.GET("/auth/email-change-verify", handler.EmailChangeVerify)
+		api.POST("/auth/email-verify", handler.EmailVerify)
+		api.POST("/auth/email-change-verify", handler.EmailChangeVerify)
 
-		api.POST("/auth/password/reset/request", handler.RequestPasswordReset)
+		// 限制重置密码请求频率为每2分钟1次
+		resetLimiter := middleware.IntervalRateMiddleware(2 * time.Minute)
+		api.POST("/auth/password/reset/request", resetLimiter, handler.RequestPasswordReset)
 		api.POST("/auth/password/reset", handler.ResetPassword)
 
 		api.GET("/register", handler.GetRegisterState)
@@ -50,7 +53,10 @@ func InitRouter(r *gin.Engine) {
 			userGroup.GET("/profile", handler.GetSelfInfo)
 			userGroup.PATCH("/username", handler.UpdateSelfUsername)
 			userGroup.PATCH("/password", handler.UpdateSelfPassword)
-			userGroup.POST("/email", handler.RequestUpdateEmail)
+
+			// 限制修改邮箱请求频率为每2分钟1次
+			emailLimiter := middleware.IntervalRateMiddleware(2 * time.Minute)
+			userGroup.POST("/email", emailLimiter, handler.RequestUpdateEmail)
 
 			// 上传限流：读取配置
 			uploadLimiter := middleware.RateLimitMiddleware(consts.ConfigRateLimitUploadRPS, consts.ConfigRateLimitUploadBurst)

@@ -34,6 +34,7 @@ var DefaultSettings = []model.Setting{
 	{Key: consts.ConfigRateLimitAuthBurst, Value: "2", Desc: "认证接口突发请求限制", Category: "速率限制"},
 	{Key: consts.ConfigRateLimitUploadRPS, Value: "1.0", Desc: "上传接口每秒请求限制 (RPS)", Category: "速率限制"},
 	{Key: consts.ConfigRateLimitUploadBurst, Value: "5", Desc: "上传接口突发请求限制", Category: "速率限制"},
+	{Key: consts.ConfigEnableSensitiveRateLimit, Value: "true", Desc: "是否开启敏感操作（忘记密码、修改邮箱）频率限制", Category: "速率限制"},
 	{Key: consts.ConfigMaxRequestBodySize, Value: "2", Desc: "非文件上传接口最大请求体限制 (MB)", Category: "服务"},
 	{Key: consts.ConfigStaticCacheControl, Value: "public, max-age=31536000", Desc: "静态资源缓存设置 (Cache-Control)", Category: "服务"},
 }

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,8 +12,6 @@ import (
 	"perfect-pic-server/internal/model"
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type ForgetPasswordToken struct {
@@ -27,8 +27,14 @@ var (
 )
 
 // GenerateForgetPasswordToken 生成忘记密码 Token，有效期 15 分钟
-func GenerateForgetPasswordToken(userID uint) string {
-	token := uuid.New().String()
+func GenerateForgetPasswordToken(userID uint) (string, error) {
+	// 使用 crypto/rand 生成 32 字节的高熵随机字符串 (64字符Hex)
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	token := hex.EncodeToString(b)
+
 	resetToken := ForgetPasswordToken{
 		UserID:    userID,
 		Token:     token,
@@ -36,7 +42,7 @@ func GenerateForgetPasswordToken(userID uint) string {
 	}
 	// 存储（覆盖之前的）
 	passwordResetStore.Store(userID, resetToken)
-	return token
+	return token, nil
 }
 
 // VerifyForgetPasswordToken 验证忘记密码 Token

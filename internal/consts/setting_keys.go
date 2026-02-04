@@ -56,7 +56,10 @@ const (
 	// ConfigRateLimitUploadBurst 上传接口限流 Burst
 	ConfigRateLimitUploadBurst = "rate_limit_upload_burst"
 
-	// ConfigMaxRequestBodySize 最大请求体限制 (MB)
+	// ConfigEnableSensitiveRateLimit 是否开启敏感操作（忘记密码、修改邮箱）频率限制
+	ConfigEnableSensitiveRateLimit = "enable_sensitive_rate_limit"
+
+	// ConfigMaxRequestBodySize 最大API请求体大小 (MB, 排除文件上传)
 	ConfigMaxRequestBodySize = "max_request_body_size"
 
 	// ConfigStaticCacheControl 静态资源缓存设置 (Cache-Control header value)

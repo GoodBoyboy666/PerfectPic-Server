@@ -168,11 +168,14 @@ func Register(c *gin.Context) {
 }
 
 func EmailVerify(c *gin.Context) {
-	tokenString := c.Query("token")
-	if tokenString == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的验证链接"})
+	var req struct {
+		Token string `json:"token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
 		return
 	}
+	tokenString := req.Token
 
 	claims, err := utils.ParseEmailToken(tokenString)
 	if err != nil {
@@ -207,11 +210,14 @@ func EmailVerify(c *gin.Context) {
 }
 
 func EmailChangeVerify(c *gin.Context) {
-	tokenString := c.Query("token")
-	if tokenString == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的验证链接"})
+	var req struct {
+		Token string `json:"token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
 		return
 	}
+	tokenString := req.Token
 
 	claims, err := utils.ParseEmailChangeToken(tokenString)
 	if err != nil {
@@ -257,10 +263,17 @@ func EmailChangeVerify(c *gin.Context) {
 // RequestPasswordReset 请求重置密码
 func RequestPasswordReset(c *gin.Context) {
 	var req struct {
-		Email string `json:"email" binding:"required,email"`
+		Email         string `json:"email" binding:"required,email"`
+		CaptchaID     string `json:"captcha_id" binding:"required"`
+		CaptchaAnswer string `json:"captcha_answer" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "邮箱格式错误"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
+		return
+	}
+
+	if !utils.VerifyCaptcha(req.CaptchaID, req.CaptchaAnswer) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "验证码错误或已过期"})
 		return
 	}
 
@@ -279,7 +292,11 @@ func RequestPasswordReset(c *gin.Context) {
 	}
 
 	// 生成 Token (内存中)
-	token := service.GenerateForgetPasswordToken(user.ID)
+	token, err := service.GenerateForgetPasswordToken(user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成重置链接失败，请稍后重试"})
+		return
+	}
 
 	// 生成链接
 	baseURL := service.GetString(consts.ConfigBaseURL)

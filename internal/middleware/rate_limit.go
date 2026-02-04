@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"perfect-pic-server/internal/consts"
 	"perfect-pic-server/internal/service"
@@ -116,6 +117,53 @@ func RateLimitMiddleware(rpsKey string, burstKey string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		c.Next()
+	}
+}
+
+// IntervalRateMiddleware 限制调用间隔的中间件
+func IntervalRateMiddleware(interval time.Duration) gin.HandlerFunc {
+	// 内部建立一个 map 缓存 IP 最后访问时间
+	var requestTimes sync.Map
+
+	// 启动清理协程
+	go func() {
+		for {
+			time.Sleep(5 * time.Minute)
+			now := time.Now()
+			requestTimes.Range(func(key, value interface{}) bool {
+				if t, ok := value.(time.Time); ok {
+					// 清理超过2倍间隔时间的记录
+					if now.Sub(t) > interval*2 && now.Sub(t) > 5*time.Minute {
+						requestTimes.Delete(key)
+					}
+				}
+				return true
+			})
+		}
+	}()
+
+	return func(c *gin.Context) {
+		// 检查是否开启敏感操作限流
+		if !service.GetBool(consts.ConfigEnableSensitiveRateLimit) {
+			c.Next()
+			return
+		}
+
+		ip := c.ClientIP()
+
+		val, ok := requestTimes.Load(ip)
+		if ok {
+			if t, ok := val.(time.Time); ok {
+				if time.Since(t) < interval {
+					c.JSON(http.StatusTooManyRequests, gin.H{"error": fmt.Sprintf("操作过于频繁，请等待 %v 后再试", interval)})
+					c.Abort()
+					return
+				}
+			}
+		}
+
+		requestTimes.Store(ip, time.Now())
 		c.Next()
 	}
 }

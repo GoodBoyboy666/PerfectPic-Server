@@ -3,6 +3,8 @@ package service
 import (
 	"crypto/tls"
 	"fmt"
+	"log"
+	"mime"
 	"net/smtp"
 	"os"
 	"perfect-pic-server/internal/config"
@@ -30,9 +32,8 @@ func SendVerificationEmail(toEmail, username, verifyUrl string) error {
 		siteName = "Perfect Pic"
 	}
 
-	// 构建邮件内容
-	subject := fmt.Sprintf("Subject: 欢迎注册 %s - 请验证您的邮箱\n", siteName)
-	contentType := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
+	// 邮件主题
+	subject := fmt.Sprintf("欢迎注册 %s - 请验证您的邮箱", siteName)
 
 	// 读取模板文件
 	templatePath := "config/verification-mail.html"
@@ -51,7 +52,7 @@ func SendVerificationEmail(toEmail, username, verifyUrl string) error {
 		body = strings.ReplaceAll(body, "{{verify_url}}", verifyUrl)
 	}
 
-	msg := []byte(subject + contentType + body)
+	msg := buildEmailMessage(cfg.SMTP.From, toEmail, subject, body)
 
 	addr := fmt.Sprintf("%s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
 
@@ -61,7 +62,7 @@ func SendVerificationEmail(toEmail, username, verifyUrl string) error {
 	}
 
 	// 默认使用 STARTTLS (通常是端口 587 或 25)
-	return smtp.SendMail(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
+	return smtp.SendMail(addr, auth, getEmailAddress(cfg.SMTP.From), []string{toEmail}, msg)
 }
 
 // SendTestEmail 发送测试邮件
@@ -78,8 +79,7 @@ func SendTestEmail(toEmail string) error {
 		siteName = "Perfect Pic"
 	}
 
-	subject := fmt.Sprintf("Subject: %s SMTP 测试邮件\n", siteName)
-	contentType := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
+	subject := fmt.Sprintf("%s SMTP 测试邮件", siteName)
 	body := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
@@ -92,7 +92,7 @@ func SendTestEmail(toEmail string) error {
 </html>
 `, siteName, time.Now().Format("2006-01-02 15:04:05"))
 
-	msg := []byte(subject + contentType + body)
+	msg := buildEmailMessage(cfg.SMTP.From, toEmail, subject, body)
 
 	addr := fmt.Sprintf("%s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
 
@@ -100,7 +100,7 @@ func SendTestEmail(toEmail string) error {
 		return sendMailWithSSL(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
 	}
 
-	return smtp.SendMail(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
+	return smtp.SendMail(addr, auth, getEmailAddress(cfg.SMTP.From), []string{toEmail}, msg)
 }
 
 // SendEmailChangeVerification 发送修改邮箱验证邮件
@@ -122,9 +122,8 @@ func SendEmailChangeVerification(toEmail, username, oldEmail, newEmail, verifyUr
 		siteName = "Perfect Pic"
 	}
 
-	// 构建邮件内容
-	subject := fmt.Sprintf("Subject: %s - 请确认修改邮箱\n", siteName)
-	contentType := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
+	// 邮件主题
+	subject := fmt.Sprintf("%s - 请确认修改邮箱", siteName)
 
 	// 读取模板文件
 	templatePath := "config/email-change-mail.html"
@@ -145,7 +144,7 @@ func SendEmailChangeVerification(toEmail, username, oldEmail, newEmail, verifyUr
 		body = strings.ReplaceAll(body, "{{verify_url}}", verifyUrl)
 	}
 
-	msg := []byte(subject + contentType + body)
+	msg := buildEmailMessage(cfg.SMTP.From, toEmail, subject, body)
 
 	addr := fmt.Sprintf("%s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
 
@@ -153,7 +152,7 @@ func SendEmailChangeVerification(toEmail, username, oldEmail, newEmail, verifyUr
 		return sendMailWithSSL(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
 	}
 
-	return smtp.SendMail(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
+	return smtp.SendMail(addr, auth, getEmailAddress(cfg.SMTP.From), []string{toEmail}, msg)
 }
 
 // SendPasswordResetEmail 发送重置密码邮件
@@ -175,9 +174,8 @@ func SendPasswordResetEmail(toEmail, username, resetUrl string) error {
 		siteName = "Perfect Pic"
 	}
 
-	// 构建邮件内容
-	subject := fmt.Sprintf("Subject: %s - 重置密码请求\n", siteName)
-	contentType := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
+	// 邮件主题
+	subject := fmt.Sprintf("%s - 重置密码请求", siteName)
 
 	// 读取模板文件
 	templatePath := "config/reset-password-mail.html"
@@ -196,7 +194,7 @@ func SendPasswordResetEmail(toEmail, username, resetUrl string) error {
 		body = strings.ReplaceAll(body, "{{reset_url}}", resetUrl)
 	}
 
-	msg := []byte(subject + contentType + body)
+	msg := buildEmailMessage(cfg.SMTP.From, toEmail, subject, body)
 
 	addr := fmt.Sprintf("%s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
 
@@ -204,11 +202,12 @@ func SendPasswordResetEmail(toEmail, username, resetUrl string) error {
 		return sendMailWithSSL(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
 	}
 
-	return smtp.SendMail(addr, auth, cfg.SMTP.From, []string{toEmail}, msg)
+	return smtp.SendMail(addr, auth, getEmailAddress(cfg.SMTP.From), []string{toEmail}, msg)
 }
 
 func sendMailWithSSL(addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
 	cfg := config.Get()
+	// log.Printf("[Email] 正在使用 SSL 连接至 %s 发送邮件", addr)
 
 	// 建立 TLS 连接
 	tlsConfig := &tls.Config{
@@ -216,14 +215,17 @@ func sendMailWithSSL(addr string, auth smtp.Auth, from string, to []string, msg 
 		ServerName:         cfg.SMTP.Host,
 	}
 
+	// 增加超时控制
 	conn, err := tls.Dial("tcp", addr, tlsConfig)
 	if err != nil {
+		log.Printf("[Email] TLS 连接失败: %v", err)
 		return err
 	}
 	defer conn.Close()
 
 	client, err := smtp.NewClient(conn, cfg.SMTP.Host)
 	if err != nil {
+		log.Printf("[Email] 创建 SMTP 客户端失败: %v", err)
 		return err
 	}
 	defer client.Close()
@@ -232,31 +234,63 @@ func sendMailWithSSL(addr string, auth smtp.Auth, from string, to []string, msg 
 	if auth != nil {
 		if ok, _ := client.Extension("AUTH"); ok {
 			if err = client.Auth(auth); err != nil {
+				log.Printf("[Email] SMTP认证失败: %v", err)
 				return err
 			}
 		}
 	}
 
+	// 提取纯邮箱地址用于传输层 (MAIL FROM)
+	mailFrom := getEmailAddress(from)
+
 	// 发送流程
-	if err = client.Mail(from); err != nil {
+	if err = client.Mail(mailFrom); err != nil {
+		log.Printf("[Email] MAIL FROM 命令失败: %v", err)
 		return err
 	}
 	for _, addr := range to {
 		if err = client.Rcpt(addr); err != nil {
+			// 不记录具体邮箱地址，防止日志泄露敏感信息
+			log.Printf("[Email] RCPT TO 命令失败: %v", err)
 			return err
 		}
 	}
 	w, err := client.Data()
 	if err != nil {
+		log.Printf("[Email] DATA 命令失败: %v", err)
 		return err
 	}
 	_, err = w.Write(msg)
 	if err != nil {
+		log.Printf("[Email] 写入邮件内容失败: %v", err)
 		return err
 	}
 	err = w.Close()
 	if err != nil {
+		log.Printf("[Email] 关闭 DATA 失败: %v", err)
 		return err
 	}
+
+	// log.Printf("[Email] 邮件投递成功")
 	return client.Quit()
+}
+
+func getEmailAddress(input string) string {
+	start := strings.Index(input, "<")
+	end := strings.LastIndex(input, ">")
+	if start != -1 && end != -1 && end > start {
+		return input[start+1 : end]
+	}
+	return input
+}
+
+func buildEmailMessage(from, to, subject, body string) []byte {
+	// 对 Subject 进行 MIME 编码，防止中文乱码或被拒收
+	encodedSubject := mime.BEncoding.Encode("UTF-8", subject)
+	// 添加 Date 头
+	dateStr := time.Now().Format(time.RFC1123Z)
+
+	header := fmt.Sprintf("Date: %s\r\nFrom: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n",
+		dateStr, from, to, encodedSubject)
+	return []byte(header + body)
 }

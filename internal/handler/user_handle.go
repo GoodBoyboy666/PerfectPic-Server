@@ -36,6 +36,7 @@ func GetSelfInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"id":            user.ID,
 		"username":      user.Username,
+		"email":         user.Email,
 		"avatar":        user.Avatar,
 		"admin":         user.Admin,
 		"storage_quota": quota,
@@ -220,7 +221,7 @@ func RequestUpdateEmail(c *gin.Context) {
 	// 前端验证页面: /auth/email-change-verify?token=xxx
 	verifyUrl := fmt.Sprintf("%s/auth/email-change-verify?token=%s", baseURL, token)
 
-	// 发送邮件到 **新邮箱**
+	// 发送邮件到新邮箱
 	go func() {
 		_ = service.SendEmailChangeVerification(req.NewEmail, user.Username, user.Email, req.NewEmail, verifyUrl)
 	}()
