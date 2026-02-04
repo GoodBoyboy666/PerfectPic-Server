@@ -26,7 +26,9 @@ import (
 var (
 	AppName     = "Perfect Pic Server"
 	AppVersion  = "dev"
-	UIGitCommit = "unknown"
+	BuildTime   = "unknown"
+	GitCommit   = "unknown"
+	FrontendVer = "unknown"
 )
 
 func main() {
@@ -159,7 +161,9 @@ func printWelcomeMessage(distFS fs.FS) {
 	fmt.Printf(" │   🚀  %s\n", AppName)
 	fmt.Println(" ├───────────────────────────────────────────────────────┤")
 	fmt.Printf(" │   📦  后端版本 : %s\n", AppVersion)
-	fmt.Printf(" │   💻  前端构建 : %s\n", UIGitCommit)
+	fmt.Printf(" │   💻  前端构建 : %s\n", FrontendVer)
+	fmt.Printf(" │   🔧  Git 提交 : %s\n", GitCommit)
+	fmt.Printf(" │   🕒  构建时间 : %s\n", BuildTime)
 	fmt.Printf(" │   🔥  服务端口 : %s\n", config.Get().Server.Port)
 	fmt.Println(" └───────────────────────────────────────────────────────┘")
 	fmt.Println()
