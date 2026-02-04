@@ -20,33 +20,45 @@ jobs:
       - name: 安装 Go 环境
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.25'
           check-latest: true
-
-      - name: 获取版本号
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-      - name: 判断是否为预发布版本
-        id: check_prerelease
+      
+      - name: 获取元数据 (版本号/时间/类型)
+        id: meta
         run: |
-          if [[ ${{ steps.get_version.outputs.VERSION }} == *"-beta"* ]] || [[ ${{ steps.get_version.outputs.VERSION }} == *"-rc"* ]]; then
+          # 提取 tag 名称 (例如 v1.0.0 或 v1.1-beta.1)
+          VERSION=${GITHUB_REF#refs/tags/}
+          
+          # 生成构建时间
+          BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S')
+          
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "BUILD_TIME=${BUILD_TIME}" >> $GITHUB_OUTPUT
+          
+          # 判断是否为预发布 (包含 -beta 或 -rc)
+          if [[ $VERSION == *"-beta"* ]] || [[ $VERSION == *"-rc"* ]]; then
             echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+            echo "Mode: Beta/Pre-release"
           else
             echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+            echo "Mode: Official Release"
           fi
 
       - name: 创建构建目录
         run: mkdir -p build_artifacts
 
-      # --- 构建非嵌入 (Non-Embed) 版本 ---
-      - name: 构建纯后端版 (Linux)
+      - name: 确定前端目标 Ref
+        id: target_frontend
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o build_artifacts/perfect-pic-server-${{ steps.get_version.outputs.VERSION }}-linux-amd64 main.go
-
-      - name: 构建纯后端版 (Windows)
-        run: |
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o build_artifacts/perfect-pic-server-${{ steps.get_version.outputs.VERSION }}-windows-amd64.exe main.go
+          if [[ "${{ steps.meta.outputs.IS_PRERELEASE }}" == "true" ]]; then
+            # Beta 模式：强制拉取前端 beta 分支最新代码
+            echo "REF=beta" >> $GITHUB_OUTPUT
+            echo "Target: Branch 'beta' (Latest HEAD)"
+          else
+            # 正式模式：强制拉取与后端同名的 Tag
+            echo "REF=v${{ steps.meta.outputs.VERSION }}" >> $GITHUB_OUTPUT
+            echo "Target: Tag 'v${{ steps.meta.outputs.VERSION }}'"
+          fi
 
       # --- 准备前端资源 ---
       - name: 检出前端仓库
@@ -54,6 +66,7 @@ jobs:
         with:
           repository: GoodBoyboy666/PerfectPic-Web
           path: web-source
+          ref: ${{ steps.target_frontend.outputs.REF }} # 使用上面动态计算的 Ref
 
       - name: 安装 pnpm
         uses: pnpm/action-setup@v2
@@ -67,36 +80,72 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: web-source/pnpm-lock.yaml
 
-      - name: 编译前端项目
+      - name: 提取前端信息并注入变量
+        id: fe_build_info
+        run: |
+          cd web-source
+          
+          # 获取前端 Commit Hash (用于展示 UI Build 指纹)
+          FE_HASH=$(git rev-parse --short HEAD)
+          
+          echo "FE_HASH=${FE_HASH}" >> $GITHUB_OUTPUT
+          
+          echo "::group::Frontend Build Info"
+          echo "Ref: ${{ steps.target_frontend.outputs.REF }}"
+          echo "Commit: ${FE_HASH}"
+          echo "::endgroup::"
+
+      - name: 编译前端项目 (注入版本)
         run: |
           cd web-source
           pnpm install
+          
+          export VITE_APP_VERSION="${{ steps.meta.outputs.VERSION }}"
+          export VITE_UI_HASH="${{ steps.fe_build_info.outputs.FE_HASH }}"
+          export VITE_BUILD_TIME="${{ steps.meta.outputs.BUILD_TIME }}"
+          
           pnpm build
 
       - name: 嵌入前端资源
         run: |
-          # 确保目标目录存在且为空
+          # 清理并复制
           rm -rf frontend/*
-          # 将编译产物复制到后端的 frontend 目录
-          # 假设 pnpm build 输出到 'dist'。如果是 'build' 请自行修改。
           cp -r web-source/dist/* frontend/
-
-          # 提取并记录前端版本号
-          FRONTEND_VERSION=$(node -p "require('./web-source/package.json').version")
-          echo "$FRONTEND_VERSION" > frontend/version
-          echo "已记录前端版本: $FRONTEND_VERSION"
-
-          # 创建占位文件以防目录为空 (虽然不太可能)
           touch frontend/.keep
 
-      # --- 构建嵌入 (Embed) 版本 ---
-      - name: 构建全栈版 (Linux)
+      - name: 准备 Go LDFLAGS
+        id: ldflags
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o build_artifacts/perfect-pic-server-${{ steps.get_version.outputs.VERSION }}-embed-linux-amd64 main.go
+          VERSION="${{ steps.meta.outputs.VERSION }}"
+          TIME="${{ steps.meta.outputs.BUILD_TIME }}"
+          COMMIT="${{ github.sha }}"
+          FE_HASH="${{ steps.fe_build_info.outputs.FE_HASH }}"
+          
+          # 构造注入参数 (假设你的变量在 main 包中)
+          # 如果你的 main.go 声明的 package 不是 main，请修改下面的 main.AppVersion
+          FLAGS="-s -w \
+            -X 'main.AppVersion=${VERSION}' \
+            -X 'main.BuildTime=${TIME}' \
+            -X 'main.GitCommit=${COMMIT}' \
+            -X 'main.FrontendVer=${FE_HASH}'"
+            
+          echo "FLAGS=${FLAGS}" >> $GITHUB_OUTPUT
 
-      - name: 构建全栈版 (Windows)
+      - name: 构建 (Linux)
         run: |
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o build_artifacts/perfect-pic-server-${{ steps.get_version.outputs.VERSION }}-embed-windows-amd64.exe main.go
+          # 1. 纯后端版
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "${{ steps.ldflags.outputs.FLAGS }}" -o build_artifacts/perfect-pic-server-${{ steps.meta.outputs.VERSION }}-linux-amd64 main.go
+          
+          # 2. 全栈版 (Embed)
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags embed -ldflags "${{ steps.ldflags.outputs.FLAGS }}" -o build_artifacts/perfect-pic-server-${{ steps.meta.outputs.VERSION }}-embed-linux-amd64 main.go
+
+      - name: 构建 (Windows)
+        run: |
+          # 1. 纯后端版
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "${{ steps.ldflags.outputs.FLAGS }}" -o build_artifacts/perfect-pic-server-${{ steps.meta.outputs.VERSION }}-windows-amd64.exe main.go
+          
+          # 2. 全栈版 (Embed)
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -tags embed -ldflags "${{ steps.ldflags.outputs.FLAGS }}" -o build_artifacts/perfect-pic-server-${{ steps.meta.outputs.VERSION }}-embed-windows-amd64.exe main.go
 
       # --- 上传发布 ---
       - name: 创建 Release 并上传附件
