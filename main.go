@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"embed"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -23,9 +22,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-
-//go:embed all:frontend
-var frontendFS embed.FS
 
 var (
 	AppName     = "Perfect Pic Server"
@@ -66,15 +62,19 @@ func main() {
 	r.Group(config.Get().Upload.AvatarURLPrefix, middleware.StaticCacheMiddleware()).
 		StaticFS("", gin.Dir(avatarPath, false))
 
-	distFS, _ := fs.Sub(frontendFS, "frontend")
+	distFS := GetFrontendAssets()
+	var indexData []byte
 
-	assetsFS, _ := fs.Sub(distFS, "assets")
-	r.StaticFS("/assets", http.FS(assetsFS))
+	if distFS != nil {
+		assetsFS, _ := fs.Sub(distFS, "assets")
+		r.StaticFS("/assets", http.FS(assetsFS))
 
-	// 预读取 index.html
-	indexData, err := fs.ReadFile(distFS, "index.html")
-	if err != nil {
-		log.Printf("⚠️ 警告: 无法读取 frontend/index.html: %v", err)
+		// 预读取 index.html
+		var err error
+		indexData, err = fs.ReadFile(distFS, "index.html")
+		if err != nil {
+			log.Printf("⚠️ 警告: 无法读取 frontend/index.html: %v", err)
+		}
 	}
 
 	r.NoRoute(func(c *gin.Context) {
@@ -84,6 +84,11 @@ func main() {
 		}
 		if strings.HasPrefix(c.Request.URL.Path, config.Get().Upload.URLPrefix) {
 			c.JSON(404, gin.H{"error": "Upload not found"})
+			return
+		}
+
+		if distFS == nil {
+			c.JSON(404, gin.H{"error": "Page not found"})
 			return
 		}
 
