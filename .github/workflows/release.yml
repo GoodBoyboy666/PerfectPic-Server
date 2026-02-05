@@ -56,8 +56,8 @@ jobs:
             echo "Target: Branch 'beta' (Latest HEAD)"
           else
             # 正式模式：强制拉取与后端同名的 Tag
-            echo "REF=v${{ steps.meta.outputs.VERSION }}" >> $GITHUB_OUTPUT
-            echo "Target: Tag 'v${{ steps.meta.outputs.VERSION }}'"
+            echo "REF=${{ steps.meta.outputs.VERSION }}" >> $GITHUB_OUTPUT
+            echo "Target: Tag '${{ steps.meta.outputs.VERSION }}'"
           fi
 
       # --- 准备前端资源 ---
