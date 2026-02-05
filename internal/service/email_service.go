@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/tls"
 	"fmt"
+	"html"
 	"log"
 	"mime"
 	"net/mail"
@@ -49,7 +50,8 @@ func SendVerificationEmail(toEmail, username, verifyUrl string) error {
 	} else {
 		body = string(contentBytes)
 		body = strings.ReplaceAll(body, "{{site_name}}", siteName)
-		body = strings.ReplaceAll(body, "{{username}}", username)
+		// 防止XSS: 对用户名进行HTML转义
+		body = strings.ReplaceAll(body, "{{username}}", html.EscapeString(username))
 		body = strings.ReplaceAll(body, "{{verify_url}}", verifyUrl)
 	}
 
@@ -163,7 +165,8 @@ func SendEmailChangeVerification(toEmail, username, oldEmail, newEmail, verifyUr
 	} else {
 		body = string(contentBytes)
 		body = strings.ReplaceAll(body, "{{site_name}}", siteName)
-		body = strings.ReplaceAll(body, "{{username}}", username)
+		// 防止XSS: 对用户名进行HTML转义
+		body = strings.ReplaceAll(body, "{{username}}", html.EscapeString(username))
 		body = strings.ReplaceAll(body, "{{old_email}}", oldEmail)
 		body = strings.ReplaceAll(body, "{{new_email}}", newEmail)
 		body = strings.ReplaceAll(body, "{{verify_url}}", verifyUrl)
@@ -227,7 +230,8 @@ func SendPasswordResetEmail(toEmail, username, resetUrl string) error {
 	} else {
 		body = string(contentBytes)
 		body = strings.ReplaceAll(body, "{{site_name}}", siteName)
-		body = strings.ReplaceAll(body, "{{username}}", username)
+		// 防止XSS: 对用户名进行HTML转义
+		body = strings.ReplaceAll(body, "{{username}}", html.EscapeString(username))
 		body = strings.ReplaceAll(body, "{{reset_url}}", resetUrl)
 	}
 
