@@ -30,16 +30,13 @@ func GetSelfInfo(c *gin.Context) {
 		return
 	}
 
-	// 计算实际配额
-	quota := service.GetUserStorageQuota(&user)
-
 	c.JSON(http.StatusOK, gin.H{
 		"id":            user.ID,
 		"username":      user.Username,
 		"email":         user.Email,
 		"avatar":        user.Avatar,
 		"admin":         user.Admin,
-		"storage_quota": quota,
+		"storage_quota": user.StorageQuota,
 		"storage_used":  user.StorageUsed,
 	})
 }

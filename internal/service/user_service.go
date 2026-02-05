@@ -83,12 +83,8 @@ func VerifyForgetPasswordToken(token string) (uint, bool) {
 	return 0, false
 }
 
-// GetUserStorageQuota 获取用户由于配置或默认设置计算出的实际存储配额
-func GetUserStorageQuota(user *model.User) int64 {
-	if user.StorageQuota != nil {
-		return *user.StorageQuota
-	}
-	// 调用同包下的 GetInt64
+// GetSystemDefaultStorageQuota 获取系统默认存储配额
+func GetSystemDefaultStorageQuota() int64 {
 	quota := GetInt64(consts.ConfigDefaultStorageQuota)
 	if quota == 0 {
 		return 1073741824 // 兜底 1GB

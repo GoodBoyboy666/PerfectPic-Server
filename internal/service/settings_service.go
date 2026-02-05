@@ -17,7 +17,7 @@ const DefaultValueNotFound = "||__NOT_FOUND__||"
 
 var DefaultSettings = []model.Setting{
 	{Key: consts.ConfigSiteName, Value: "Perfect Pic", Desc: "网站名称", Category: "常规"},
-	{Key: consts.ConfigSiteDescription, Value: "A simple picture bed", Desc: "网站描述", Category: "常规"},
+	{Key: consts.ConfigSiteDescription, Value: "记录与分享完美瞬间", Desc: "网站描述", Category: "常规"},
 	{Key: consts.ConfigSiteLogo, Value: "", Desc: "网站Logo URL", Category: "常规"},
 	{Key: consts.ConfigSiteFavicon, Value: "", Desc: "网站Favicon URL", Category: "常规"},
 	{Key: consts.ConfigBaseURL, Value: "http://localhost", Desc: "网站基础URL (用于生成链接)", Category: "常规"},

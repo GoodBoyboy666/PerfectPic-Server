@@ -47,3 +47,9 @@ func GetAvatarPrefix(c *gin.Context) {
 		"avatar_prefix": cfg.Upload.AvatarURLPrefix,
 	})
 }
+
+func GetDefaultStorageQuota(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"default_storage_quota": service.GetSystemDefaultStorageQuota(),
+	})
+}

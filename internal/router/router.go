@@ -45,6 +45,7 @@ func InitRouter(r *gin.Engine) {
 		api.GET("/webinfo", handler.GetWebInfo)
 		api.GET("/image_prefix", handler.GetImagePrefix)
 		api.GET("/avatar_prefix", handler.GetAvatarPrefix)
+		api.GET("/default_storage_quota", handler.GetDefaultStorageQuota)
 
 		// 权限路由
 		userGroup := api.Group("/user")

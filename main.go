@@ -41,6 +41,34 @@ func main() {
 	db.InitDB()
 	service.InitializeSettings()
 
+	uploadPath, avatarPath := ensureDirectories()
+
+	gin.SetMode(config.Get().Server.Mode)
+
+	r := gin.Default()
+	applyTrustedProxies(r)
+	router.InitRouter(r)
+
+	setupStaticFiles(r, uploadPath, avatarPath)
+
+	distFS := GetFrontendAssets()
+	indexData := setupFrontend(r, distFS)
+
+	r.NoRoute(getNoRouteHandler(distFS, indexData))
+
+	// 导出模式
+	if *exportRoutes {
+		exportAPI(r)
+		return // 导出后直接退出程序，不启动 Web 服务
+	}
+
+	// 打印启动欢迎语
+	printWelcomeMessage()
+
+	startServer(r)
+}
+
+func ensureDirectories() (string, string) {
 	uploadPath := config.Get().Upload.Path
 	checkSecurePath(uploadPath)
 	if err := os.MkdirAll(uploadPath, 0755); err != nil {
@@ -52,21 +80,19 @@ func main() {
 	if err := os.MkdirAll(avatarPath, 0755); err != nil {
 		log.Fatal("无法创建头像目录: ", err)
 	}
+	return uploadPath, avatarPath
+}
 
-	gin.SetMode(config.Get().Server.Mode)
-
-	r := gin.Default()
-	applyTrustedProxies(r)
-	router.InitRouter(r)
-
+func setupStaticFiles(r *gin.Engine, uploadPath, avatarPath string) {
 	// 使用带缓存控制的静态文件服务
 	r.Group(config.Get().Upload.URLPrefix, middleware.StaticCacheMiddleware()).
 		StaticFS("", gin.Dir(uploadPath, false))
 
 	r.Group(config.Get().Upload.AvatarURLPrefix, middleware.StaticCacheMiddleware()).
 		StaticFS("", gin.Dir(avatarPath, false))
+}
 
-	distFS := GetFrontendAssets()
+func setupFrontend(r *gin.Engine, distFS fs.FS) []byte {
 	var indexData []byte
 
 	if distFS != nil {
@@ -80,8 +106,11 @@ func main() {
 			log.Printf("⚠️ 警告: 无法读取 frontend/index.html: %v", err)
 		}
 	}
+	return indexData
+}
 
-	r.NoRoute(func(c *gin.Context) {
+func getNoRouteHandler(distFS fs.FS, indexData []byte) gin.HandlerFunc {
+	return func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/api") {
 			c.JSON(404, gin.H{"error": "API not found"})
 			return
@@ -112,7 +141,7 @@ func main() {
 
 		f, err := distFS.Open(path)
 		if err == nil {
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 			stat, _ := f.Stat()
 			if !stat.IsDir() {
 				c.FileFromFS(path, http.FS(distFS))
@@ -122,17 +151,10 @@ func main() {
 
 		// SPA 回退：服务 index.html 内容
 		c.Data(200, "text/html; charset=utf-8", indexData)
-	})
-
-	// 导出模式
-	if *exportRoutes {
-		exportAPI(r)
-		return // 导出后直接退出程序，不启动 Web 服务
 	}
+}
 
-	// 打印启动欢迎语
-	printWelcomeMessage(distFS)
-
+func startServer(r *gin.Engine) {
 	// 停机配置
 	srv := &http.Server{
 		Addr:    ":" + config.Get().Server.Port,
@@ -161,7 +183,7 @@ func main() {
 	log.Println("✅ 服务已退出")
 }
 
-func printWelcomeMessage(distFS fs.FS) {
+func printWelcomeMessage() {
 
 	fmt.Println()
 	fmt.Println(" ┌───────────────────────────────────────────────────────┐")

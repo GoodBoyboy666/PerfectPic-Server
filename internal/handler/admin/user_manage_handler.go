@@ -59,22 +59,8 @@ func GetUserList(c *gin.Context) {
 		return
 	}
 
-	// 构造包含存储使用情况的响应结构
-	type UserWithStorage struct {
-		model.User
-		StorageQuotaCalculated int64 `json:"storage_quota"`
-	}
-
-	var userList []UserWithStorage
-	for _, u := range users {
-		userList = append(userList, UserWithStorage{
-			User:                   u,
-			StorageQuotaCalculated: service.GetUserStorageQuota(&u),
-		})
-	}
-
 	c.JSON(http.StatusOK, gin.H{
-		"data":      userList,
+		"data":      users,
 		"total":     total,
 		"page":      page,
 		"page_size": pageSize,
