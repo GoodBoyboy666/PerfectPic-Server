@@ -91,6 +91,11 @@ func main() {
 			return
 		}
 
+		if strings.HasPrefix(c.Request.URL.Path, config.Get().Upload.AvatarURLPrefix) {
+			c.JSON(404, gin.H{"error": "Avatar not found"})
+			return
+		}
+
 		if distFS == nil {
 			c.JSON(404, gin.H{"error": "Page not found"})
 			return
