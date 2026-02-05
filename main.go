@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"perfect-pic-server/internal/config"
+	"perfect-pic-server/internal/consts"
 	"perfect-pic-server/internal/db"
 	"perfect-pic-server/internal/middleware"
 	"perfect-pic-server/internal/router"
@@ -55,6 +56,7 @@ func main() {
 	gin.SetMode(config.Get().Server.Mode)
 
 	r := gin.Default()
+	applyTrustedProxies(r)
 	router.InitRouter(r)
 
 	// 使用带缓存控制的静态文件服务
@@ -239,4 +241,53 @@ func checkSecurePath(path string) {
 			log.Fatalf("❌ 安全配置错误: 静态资源目录 '%s' (解析为: '%s') 必须位于项目根目录下的安全子目录中 (如 %v)。\n这能防止意外暴露源代码或配置文件 (如 internal, cmd 等)。", path, relSlash, allowedDirs)
 		}
 	}
+}
+
+func applyTrustedProxies(r *gin.Engine) {
+	raw := strings.TrimSpace(service.GetString(consts.ConfigTrustedProxies))
+	if raw == "" {
+		if err := r.SetTrustedProxies(nil); err != nil {
+			log.Printf("⚠️ 设置可信代理失败: %v", err)
+		}
+		log.Println("⚠️ 未配置可信代理，ClientIP 将使用 RemoteAddr")
+		return
+	}
+
+	proxies := splitTrustedProxyList(raw)
+	if len(proxies) == 0 {
+		if err := r.SetTrustedProxies(nil); err != nil {
+			log.Printf("⚠️ 设置可信代理失败: %v", err)
+		}
+		log.Println("⚠️ 可信代理配置为空，已禁用代理信任")
+		return
+	}
+
+	if err := r.SetTrustedProxies(proxies); err != nil {
+		log.Printf("⚠️ 可信代理配置无效: %v，已禁用代理信任", err)
+		_ = r.SetTrustedProxies(nil)
+		return
+	}
+
+	log.Printf("✅ 已配置可信代理: %v", proxies)
+}
+
+func splitTrustedProxyList(raw string) []string {
+	parts := strings.FieldsFunc(raw, func(r rune) bool {
+		switch r {
+		case ',', ';', ' ', '\t', '\n', '\r':
+			return true
+		default:
+			return false
+		}
+	})
+
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		out = append(out, part)
+	}
+	return out
 }

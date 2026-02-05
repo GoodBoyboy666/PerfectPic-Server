@@ -31,14 +31,22 @@ func InitDB() {
 			cfg.Database.Port,
 			cfg.Database.Name,
 		)
+		if cfg.Database.SSL {
+			dsn += "&tls=true"
+		}
 		dialector = mysql.Open(dsn)
 	case "postgres":
-		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Shanghai",
+		sslMode := "disable"
+		if cfg.Database.SSL {
+			sslMode = "require"
+		}
+		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=Asia/Shanghai",
 			cfg.Database.Host,
 			cfg.Database.User,
 			cfg.Database.Password,
 			cfg.Database.Name,
 			cfg.Database.Port,
+			sslMode,
 		)
 		dialector = postgres.Open(dsn)
 	case "sqlite":

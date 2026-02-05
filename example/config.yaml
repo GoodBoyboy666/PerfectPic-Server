@@ -10,6 +10,7 @@ database:
   user: "root"
   password: "password"
   name: "perfect_pic"
+  ssl: false # enable TLS/SSL for mysql/postgres
 
 jwt:
   secret: "change_this_to_a_secure_random_string"

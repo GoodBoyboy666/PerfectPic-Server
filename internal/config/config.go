@@ -39,6 +39,7 @@ type DatabaseConfig struct {
 	User     string `mapstructure:"user"`
 	Password string `mapstructure:"password"`
 	Name     string `mapstructure:"name"` // database name
+	SSL      bool   `mapstructure:"ssl"`  // enable TLS/SSL
 }
 
 type JWTConfig struct {
@@ -98,6 +99,7 @@ func InitConfig() {
 	v.SetDefault("database.user", "root")
 	v.SetDefault("database.password", "root")
 	v.SetDefault("database.name", "perfect_pic")
+	v.SetDefault("database.ssl", false)
 	v.SetDefault("jwt.secret", "")
 	v.SetDefault("jwt.expiration_hours", 24)
 	v.SetDefault("smtp.host", "")

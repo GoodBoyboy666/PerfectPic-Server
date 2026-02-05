@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"perfect-pic-server/internal/consts"
 	"perfect-pic-server/internal/service"
@@ -32,6 +33,26 @@ func BodyLimitMiddleware() gin.HandlerFunc {
 		// 使用 MaxBytesReader 限制读取的字节数
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBytes)
 
+		c.Next()
+	}
+}
+
+// UploadBodyLimitMiddleware 限制上传/头像接口的请求体大小
+func UploadBodyLimitMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		maxSizeMB := service.GetInt(consts.ConfigMaxUploadSize)
+		if maxSizeMB <= 0 {
+			maxSizeMB = 10
+		}
+		maxBytes := int64(maxSizeMB) * 1024 * 1024
+
+		if c.Request.ContentLength > maxBytes && c.Request.ContentLength != -1 {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": fmt.Sprintf("文件大小不能超过 %dMB", maxSizeMB)})
+			c.Abort()
+			return
+		}
+
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBytes)
 		c.Next()
 	}
 }

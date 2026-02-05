@@ -37,6 +37,7 @@ var DefaultSettings = []model.Setting{
 	{Key: consts.ConfigEnableSensitiveRateLimit, Value: "true", Desc: "是否开启敏感操作（忘记密码、修改邮箱）频率限制", Category: "速率限制"},
 	{Key: consts.ConfigMaxRequestBodySize, Value: "2", Desc: "非文件上传接口最大请求体限制 (MB)", Category: "服务"},
 	{Key: consts.ConfigStaticCacheControl, Value: "public, max-age=31536000", Desc: "静态资源缓存设置 (Cache-Control)", Category: "服务"},
+	{Key: consts.ConfigTrustedProxies, Value: "", Desc: "可信代理列表（逗号分隔，留空表示不信任代理头；修改后需重启服务生效）", Category: "安全"},
 }
 
 func ClearCache() {

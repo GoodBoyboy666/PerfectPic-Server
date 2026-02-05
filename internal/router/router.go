@@ -19,14 +19,15 @@ func InitRouter(r *gin.Engine) {
 		// 应用请求体大小限制中间件
 		api.Use(middleware.BodyLimitMiddleware())
 
+		// 认证限流：读取配置
+		authLimiter := middleware.RateLimitMiddleware(consts.ConfigRateLimitAuthRPS, consts.ConfigRateLimitAuthBurst)
+
 		// 公开路由
 		api.GET("/ping", func(c *gin.Context) {
 			c.JSON(200, gin.H{"message": "pong from gin"})
 		})
 		api.GET("/init", handler.GetInitState)
 
-		// 认证限流：读取配置
-		authLimiter := middleware.RateLimitMiddleware(consts.ConfigRateLimitAuthRPS, consts.ConfigRateLimitAuthBurst)
 		api.POST("/init", authLimiter, handler.Init)
 		api.POST("/login", authLimiter, handler.Login)
 		api.POST("/register", authLimiter, handler.Register)
@@ -40,7 +41,7 @@ func InitRouter(r *gin.Engine) {
 		api.POST("/auth/password/reset", handler.ResetPassword)
 
 		api.GET("/register", handler.GetRegisterState)
-		api.GET("/captcha", handler.GetCaptcha)
+		api.GET("/captcha", authLimiter, handler.GetCaptcha)
 		api.GET("/webinfo", handler.GetWebInfo)
 		api.GET("/image_prefix", handler.GetImagePrefix)
 		api.GET("/avatar_prefix", handler.GetAvatarPrefix)
@@ -60,10 +61,11 @@ func InitRouter(r *gin.Engine) {
 
 			// 上传限流：读取配置
 			uploadLimiter := middleware.RateLimitMiddleware(consts.ConfigRateLimitUploadRPS, consts.ConfigRateLimitUploadBurst)
-			userGroup.PATCH("/avatar", uploadLimiter, handler.UpdateSelfAvatar)
+			uploadBodyLimit := middleware.UploadBodyLimitMiddleware()
+			userGroup.PATCH("/avatar", uploadBodyLimit, uploadLimiter, handler.UpdateSelfAvatar)
 
 			// Image Upload
-			userGroup.POST("/upload", uploadLimiter, handler.UploadImage)
+			userGroup.POST("/upload", uploadBodyLimit, uploadLimiter, handler.UploadImage)
 			userGroup.GET("/images", handler.GetMyImages)
 			userGroup.DELETE("/images/batch", handler.BatchDeleteMyImages)
 			userGroup.DELETE("/images/:id", handler.DeleteMyImage)
