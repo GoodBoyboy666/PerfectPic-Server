@@ -98,7 +98,7 @@ jobs:
       - name: 编译前端项目 (注入版本)
         run: |
           cd web-source
-          pnpm install
+          pnpm install --frozen-lockfile
           
           export VITE_APP_VERSION="${{ steps.meta.outputs.VERSION }}"
           export VITE_UI_HASH="${{ steps.fe_build_info.outputs.FE_HASH }}"
