@@ -95,7 +95,7 @@ cd perfect-pic-server
 
 编译前端项目 [PerfectPic-Web](https://github.com/GoodBoyboy666/PerfectPic-Web)，将编译产物复制进`frontend`目录
 
-这将打包前端Web内容进入二进制文件
+在编译命令中加入`-tags embed`，这将打包前端Web内容进入二进制文件
 
 ### 4. 编译运行
 
@@ -106,7 +106,7 @@ go mod tidy
 go run main.go
 
 # 编译二进制文件
-go build -o perfect-pic-server main.go
+go build -tags embed -o perfect-pic-server main.go
 ```
 
 ### 5. 前后端分离部署（非 embed 模式）
@@ -136,12 +136,13 @@ server:
 
 database:
   type: "sqlite" # sqlite, mysql, postgres
-  filename: "config/perfect_pic.db" # for sqlite
+  filename: "config/perfect_pic.db" # for sqlite  
   host: "127.0.0.1" # for mysql/postgres
   port: "3306"
   user: "root"
   password: "password"
   name: "perfect_pic"
+  ssl: false
 
 jwt:
   secret: "change_this_to_a_secure_random_string"
