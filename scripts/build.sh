@@ -54,16 +54,9 @@ if CURRENT_TAG=$(git describe --tags --exact-match HEAD 2>/dev/null); then
     BUILD_VERSION=$CURRENT_TAG
     echo -e "  ✅ 检测到当前 commit 存在 tag: \033[32m$BUILD_VERSION\033[0m"
 else
-    # 获取最近 tag + hash
-    if LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null); then
-        SHORT_HASH=$(git rev-parse --short HEAD)
-        BUILD_VERSION="${LATEST_TAG}-${SHORT_HASH}"
-        echo -e "  ℹ️  当前 commit 无 tag，基于最近 tag 生成版本: \033[32m$BUILD_VERSION\033[0m"
-    else
-        SHORT_HASH=$(git rev-parse --short HEAD)
-        BUILD_VERSION="v0.0.0-${SHORT_HASH}"
-        echo -e "  ⚠️  未找到任何 tag，生成默认版本: \033[32m$BUILD_VERSION\033[0m"
-    fi
+    # 使用 git describe --tags --always --dirty
+    BUILD_VERSION=$(git describe --tags --always --dirty)
+    echo -e "  ℹ️  当前 commit 无 tag，生成版本: \033[32m$BUILD_VERSION\033[0m"
 fi
 
 BUILD_TIME=$(date '+%Y-%m-%d_%H:%M:%S')

@@ -1,0 +1,22 @@
+# Binaries
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Directories
+vendor/
+.idea/
+.vscode/
+*.log
+logs/
+uploads/
+frontend/
+web-source/
+
+# Files
+.DS_Store
+*.swp
+config/config.yaml
+# Keep example config though, but don't overwrite user's local config if mounting
