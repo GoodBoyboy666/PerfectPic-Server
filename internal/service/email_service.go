@@ -12,6 +12,7 @@ import (
 	"os"
 	"perfect-pic-server/internal/config"
 	"perfect-pic-server/internal/consts"
+	"strings"
 	"time"
 )
 
@@ -434,28 +435,30 @@ func renderTemplate(tpl string, data interface{}) (string, error) {
 }
 
 func formatAddressHeader(input string) (string, string, error) {
-	// 1. 解析地址 (如果格式不对，这里直接报错，起到 Validation 作用)
+	// 解析地址 (如果格式不对，这里直接报错，起到 Validation 作用)
 	addr, err := mail.ParseAddress(input)
 	if err != nil {
 		return "", "", err
 	}
 
-	// 2. 处理显示名称 (Name)
-	// 即使 Name 里包含 \r\n，经过 QEncoding 后也会变成 =?UTF-8?Q?...?= 格式
+	cleanAddr := strings.ReplaceAll(addr.Address, "\r", "")
+	cleanAddr = strings.ReplaceAll(cleanAddr, "\n", "")
+	cleanAddr = strings.TrimSpace(cleanAddr)
+
 	encodedName := addr.Name
 	if encodedName != "" {
 		encodedName = mime.QEncoding.Encode("UTF-8", encodedName)
 	}
 
-	// 3. 重新组装 Header 值
+	// 重新组装 Header 值
 	// 格式: =?UTF-8?Q?Name?= <email@example.com>
 	var headerValue string
 	if encodedName != "" {
-		headerValue = fmt.Sprintf("%s <%s>", encodedName, addr.Address)
+		headerValue = fmt.Sprintf("%s <%s>", encodedName, cleanAddr)
 	} else {
 		// 如果没有名字，直接使用纯邮箱地址
-		headerValue = addr.Address
+		headerValue = cleanAddr
 	}
 
-	return headerValue, addr.Address, nil
+	return headerValue, cleanAddr, nil
 }
