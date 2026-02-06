@@ -34,8 +34,12 @@ func SendVerificationEmail(toEmail, username, verifyUrl string) error {
 		siteName = "Perfect Pic"
 	}
 
+	safeSiteName := html.EscapeString(siteName)
+	safeVerifyUrl := html.EscapeString(verifyUrl)
+	safeUsername := html.EscapeString(username)
+
 	// 邮件主题
-	subject := fmt.Sprintf("欢迎注册 %s - 请验证您的邮箱", siteName)
+	subject := fmt.Sprintf("欢迎注册 %s - 请验证您的邮箱", safeSiteName)
 
 	// 读取模板文件
 	templatePath := "config/verification-mail.html"
@@ -46,13 +50,13 @@ func SendVerificationEmail(toEmail, username, verifyUrl string) error {
 		body = fmt.Sprintf(`
 			<h1>欢迎加入 %s</h1>
 			<p>请点击链接验证邮箱: <a href="%s">%s</a></p>
-		`, siteName, html.EscapeString(verifyUrl), html.EscapeString(verifyUrl))
+		`, safeSiteName, safeVerifyUrl, safeVerifyUrl)
 	} else {
 		body = string(contentBytes)
-		body = strings.ReplaceAll(body, "{{site_name}}", siteName)
+		body = strings.ReplaceAll(body, "{{site_name}}", safeSiteName)
 		// 防止XSS: 对用户名进行HTML转义
-		body = strings.ReplaceAll(body, "{{username}}", html.EscapeString(username))
-		body = strings.ReplaceAll(body, "{{verify_url}}", html.EscapeString(verifyUrl))
+		body = strings.ReplaceAll(body, "{{username}}", safeUsername)
+		body = strings.ReplaceAll(body, "{{verify_url}}", safeVerifyUrl)
 	}
 
 	fromHeader, fromAddr, err := parseAddressForHeader(cfg.SMTP.From)
@@ -94,7 +98,9 @@ func SendTestEmail(toEmail string) error {
 		siteName = "Perfect Pic"
 	}
 
-	subject := fmt.Sprintf("%s SMTP 测试邮件", siteName)
+	safeSiteName := html.EscapeString(siteName)
+
+	subject := fmt.Sprintf("%s SMTP 测试邮件", safeSiteName)
 	body := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
@@ -105,7 +111,7 @@ func SendTestEmail(toEmail string) error {
     <p>时间: %s</p>
 </body>
 </html>
-`, siteName, time.Now().Format("2006-01-02 15:04:05"))
+`, safeSiteName, time.Now().Format("2006-01-02 15:04:05"))
 
 	fromHeader, fromAddr, err := parseAddressForHeader(cfg.SMTP.From)
 	if err != nil {
@@ -149,8 +155,14 @@ func SendEmailChangeVerification(toEmail, username, oldEmail, newEmail, verifyUr
 		siteName = "Perfect Pic"
 	}
 
+	safeSiteName := html.EscapeString(siteName)
+	safeOldEmail := html.EscapeString(oldEmail)
+	safeNewEmail := html.EscapeString(newEmail)
+	safeVerifyUrl := html.EscapeString(verifyUrl)
+	safeUsername := html.EscapeString(username)
+
 	// 邮件主题
-	subject := fmt.Sprintf("%s - 请确认修改邮箱", siteName)
+	subject := fmt.Sprintf("%s - 请确认修改邮箱", safeSiteName)
 
 	// 读取模板文件
 	templatePath := "config/email-change-mail.html"
@@ -161,15 +173,15 @@ func SendEmailChangeVerification(toEmail, username, oldEmail, newEmail, verifyUr
 			<h1>修改邮箱确认 - %s</h1>
 			<p>您请求将邮箱从 %s 修改为 %s。</p>
 			<p>请点击链接确认: <a href="%s">%s</a></p>
-		`, siteName, html.EscapeString(oldEmail), html.EscapeString(newEmail), html.EscapeString(verifyUrl), html.EscapeString(verifyUrl))
+		`, safeSiteName, safeOldEmail, safeNewEmail, safeVerifyUrl, safeVerifyUrl)
 	} else {
 		body = string(contentBytes)
-		body = strings.ReplaceAll(body, "{{site_name}}", siteName)
+		body = strings.ReplaceAll(body, "{{site_name}}", safeSiteName)
 		// 防止XSS: 对用户名进行HTML转义
-		body = strings.ReplaceAll(body, "{{username}}", html.EscapeString(username))
-		body = strings.ReplaceAll(body, "{{old_email}}", html.EscapeString(oldEmail))
-		body = strings.ReplaceAll(body, "{{new_email}}", html.EscapeString(newEmail))
-		body = strings.ReplaceAll(body, "{{verify_url}}", html.EscapeString(verifyUrl))
+		body = strings.ReplaceAll(body, "{{username}}", safeUsername)
+		body = strings.ReplaceAll(body, "{{old_email}}", safeOldEmail)
+		body = strings.ReplaceAll(body, "{{new_email}}", safeNewEmail)
+		body = strings.ReplaceAll(body, "{{verify_url}}", safeVerifyUrl)
 	}
 
 	fromHeader, fromAddr, err := parseAddressForHeader(cfg.SMTP.From)
@@ -214,8 +226,12 @@ func SendPasswordResetEmail(toEmail, username, resetUrl string) error {
 		siteName = "Perfect Pic"
 	}
 
+	safeSiteName := html.EscapeString(siteName)
+	safeResetUrl := html.EscapeString(resetUrl)
+	safeUsername := html.EscapeString(username)
+
 	// 邮件主题
-	subject := fmt.Sprintf("%s - 重置密码请求", siteName)
+	subject := fmt.Sprintf("%s - 重置密码请求", safeSiteName)
 
 	// 读取模板文件
 	templatePath := "config/reset-password-mail.html"
@@ -226,13 +242,13 @@ func SendPasswordResetEmail(toEmail, username, resetUrl string) error {
 			<h1>重置密码 - %s</h1>
 			<p>请点击链接重置密码: <a href="%s">%s</a></p>
 			<p>有效期15分钟。</p>
-		`, siteName, html.EscapeString(resetUrl), html.EscapeString(resetUrl))
+		`, safeSiteName, safeResetUrl, safeResetUrl)
 	} else {
 		body = string(contentBytes)
-		body = strings.ReplaceAll(body, "{{site_name}}", siteName)
+		body = strings.ReplaceAll(body, "{{site_name}}", safeSiteName)
 		// 防止XSS: 对用户名进行HTML转义
-		body = strings.ReplaceAll(body, "{{username}}", html.EscapeString(username))
-		body = strings.ReplaceAll(body, "{{reset_url}}", html.EscapeString(resetUrl))
+		body = strings.ReplaceAll(body, "{{username}}", safeUsername)
+		body = strings.ReplaceAll(body, "{{reset_url}}", safeResetUrl)
 	}
 
 	fromHeader, fromAddr, err := parseAddressForHeader(cfg.SMTP.From)
@@ -326,29 +342,23 @@ func sendMailWithSSL(addr string, auth smtp.Auth, from string, to []string, msg 
 }
 
 func parseAddressForHeader(input string) (string, string, error) {
-	if err := rejectCRLF(input, "address"); err != nil {
-		return "", "", err
-	}
+	cleanInput := sanitizeHeaderContent(input)
 
-	addr, err := mail.ParseAddress(input)
+	addr, err := mail.ParseAddress(cleanInput)
 	if err != nil {
 		return "", "", err
 	}
 
 	headerValue := addr.String()
-	if err := rejectCRLF(headerValue, "address"); err != nil {
-		return "", "", err
-	}
+	cleanHeaderValue := sanitizeHeaderContent(headerValue)
 
-	return headerValue, addr.Address, nil
+	return cleanHeaderValue, addr.Address, nil
 }
 
 func buildEmailMessage(fromHeader, toHeader, subject, body string) ([]byte, error) {
-	if err := rejectCRLF(subject, "subject"); err != nil {
-		return nil, err
-	}
+	cleanSubject := sanitizeHeaderContent(subject)
 	// 对 Subject 进行 MIME 编码，防止中文乱码或被拒收
-	encodedSubject := mime.BEncoding.Encode("UTF-8", subject)
+	encodedSubject := mime.BEncoding.Encode("UTF-8", cleanSubject)
 	// 添加 Date 头
 	dateStr := time.Now().Format(time.RFC1123Z)
 
@@ -357,9 +367,18 @@ func buildEmailMessage(fromHeader, toHeader, subject, body string) ([]byte, erro
 	return []byte(header + body), nil
 }
 
-func rejectCRLF(value string, field string) error {
-	if strings.ContainsAny(value, "\r\n") {
-		return fmt.Errorf("invalid %s header: CRLF not allowed", field)
-	}
-	return nil
+//func rejectCRLF(value string, field string) error {
+//	if strings.ContainsAny(value, "\r\n") {
+//		return fmt.Errorf("invalid %s header: CRLF not allowed", field)
+//	}
+//	return nil
+//}
+
+func sanitizeHeaderContent(input string) string {
+	return strings.Map(func(r rune) rune {
+		if r == '\r' || r == '\n' {
+			return -1 // 丢弃字符
+		}
+		return r
+	}, input)
 }
