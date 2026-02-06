@@ -1,6 +1,6 @@
 # Perfect Pic Server
 
-![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)
+![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)
 ![Gin](https://img.shields.io/badge/Framework-Gin-00ADD8?style=flat)
 ![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?style=flat&logo=sqlite)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat)
@@ -80,7 +80,9 @@ $env:PERFECT_PIC_JWT_SECRET="your_secure_random_secret_key"
 
 ### 1. 环境要求
 
-* Go 1.21 或更高版本
+* Go 1.25 或更高版本
+* NodeJs 22 或更高版本
+* PNPM 10 或更高版本
 * MySQL/PostgreSQL (可选)
 
 ### 2. 获取代码
@@ -91,25 +93,22 @@ git clone https://github.com/GoodBoyboy666/PerfectPic-Server.git
 cd perfect-pic-server
 ```
 
-### 3. 获取前端代码（embed 模式）
-
-编译前端项目 [PerfectPic-Web](https://github.com/GoodBoyboy666/PerfectPic-Web)，将编译产物复制进`frontend`目录
-
-在编译命令中加入`-tags embed`，这将打包前端Web内容进入二进制文件
-
-### 4. 编译运行
+### 3. 编译运行
 
 ```bash
-go mod tidy
+# 进入脚本文件夹
+cd scripts/
 
-# 开发模式运行 (默认使用 SQLite)
-go run main.go
+# 赋予执行权限
+chmod +x build.sh
 
-# 编译二进制文件
-go build -tags embed -o perfect-pic-server main.go
+# 执行编译脚本
+./build.sh
 ```
 
-### 5. 前后端分离部署（非 embed 模式）
+最终产物位于项目根目录的 `bin` 文件夹
+
+### 4. 前后端分离部署（非 embed 模式）
 
 项目前端仓库为：[PerfectPic-Web](https://github.com/GoodBoyboy666/PerfectPic-Web)
 
