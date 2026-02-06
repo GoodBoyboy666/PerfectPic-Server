@@ -445,20 +445,16 @@ func formatAddressHeader(input string) (string, string, error) {
 	cleanAddr = strings.ReplaceAll(cleanAddr, "\n", "")
 	cleanAddr = strings.TrimSpace(cleanAddr)
 
-	encodedName := addr.Name
-	if encodedName != "" {
-		encodedName = mime.QEncoding.Encode("UTF-8", encodedName)
-	}
-
-	// 重新组装 Header 值
-	// 格式: =?UTF-8?Q?Name?= <email@example.com>
-	var headerValue string
-	if encodedName != "" {
-		headerValue = fmt.Sprintf("%s <%s>", encodedName, cleanAddr)
+	var finalHeader string
+	if addr.Name != "" {
+		cleanName := strings.ReplaceAll(addr.Name, "\r", "")
+		cleanName = strings.ReplaceAll(cleanName, "\n", "")
+		encodedName := mime.BEncoding.Encode("UTF-8", cleanName)
+		finalHeader = fmt.Sprintf("%s <%s>", encodedName, cleanAddr)
 	} else {
-		// 如果没有名字，直接使用纯邮箱地址
-		headerValue = cleanAddr
+		// 没有名字，只返回清洗后的地址
+		finalHeader = cleanAddr
 	}
 
-	return headerValue, cleanAddr, nil
+	return finalHeader, cleanAddr, nil
 }
