@@ -74,7 +74,65 @@ $env:PERFECT_PIC_JWT_SECRET="your_secure_random_secret_key"
 
 访问 `http://localhost:8080/init` 即可进入初始化向导。
 
-## 🛠️ 手动构建
+## ✈️ Docker 部署
+
+如果你更喜欢使用 Docker 部署，项目提供了开箱即用的 Dockerfile。
+
+### 1. 构建镜像
+
+```bash
+# 获取构建版本信息
+VERSION=$(git describe --tags --always --dirty)
+COMMIT=$(git rev-parse HEAD)
+DATE=$(date '+%Y-%m-%d_%H:%M:%S')
+
+# 构建镜像
+docker build . \
+  -t perfect-pic-server:latest \
+  --build-arg APP_VERSION="$VERSION" \
+  --build-arg GIT_COMMIT="$COMMIT" \
+  --build-arg BUILD_TIME="$DATE" \
+  --build-arg FRONTEND_REF="origin/main"
+```
+
+### 2. 运行容器
+
+运行容器并持久化数据：
+
+```bash
+docker run -d \
+  --name perfect-pic \
+  -p 8080:8080 \
+  -e PERFECT_PIC_SERVER_MODE=release \
+  -e PERFECT_PIC_JWT_SECRET=xxxxx \
+  -v $PWD/config:/app/config \
+  -v $PWD/uploads:/app/uploads \
+  perfect-pic-server:latest
+```
+
+* **挂载说明**:
+  * `/app/config`: 存放数据库文件 (如果是 SQLite) 和配置文件。强烈建议首次运行前在该目录下配置好 `config.yaml`。
+  * `/app/uploads`: 持久化存储上传的图片。
+
+### 3. 可以配合docker-compose使用
+
+```yaml
+services:
+  perfect-pic:
+    image: perfect-pic-server:latest
+    container_name: perfect-pic
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/app/config
+      - ./uploads:/app/uploads
+    environment:
+      - PERFECT_PIC_SERVER_MODE=release
+      - PERFECT_PIC_JWT_SECRET=xxxxxx
+    restart: unless-stopped
+```
+
+## 🛠️手动构建
 
 如果您想从源码编译或参与开发：
 
@@ -169,6 +227,10 @@ smtp:
 
 * `server.port` -> `PERFECT_PIC_SERVER_PORT`
 * `jwt.secret` -> `PERFECT_PIC_JWT_SECRET`
+
+### 邮件模板
+
+`example` 文件夹中有有文件模板，复制至 `config` 目录即可。
 
 ## 📂 目录结构
 
