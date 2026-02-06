@@ -148,7 +148,7 @@ services:
 ```bash
 git clone https://github.com/GoodBoyboy666/PerfectPic-Server.git
 
-cd perfect-pic-server
+cd PerfectPic-Server
 ```
 
 ### 3. 编译运行
@@ -237,6 +237,7 @@ smtp:
 ```text
 .
 ├── config/             # 配置文件目录
+├── example/            # 示例文件 (如邮件模板)
 ├── frontend/           # 前端静态资源 (嵌入式)
 ├── internal/
 │   ├── config/         # 配置加载与管理
@@ -249,6 +250,7 @@ smtp:
 │   ├── router/         # 路由定义
 │   ├── service/        # 核心业务逻辑服务层
 │   └── utils/          # 工具函数
+├── scripts/            # 构建与部署脚本
 ├── uploads/            # 图片存储目录 (自动创建)
 ├── main.go             # 程序入口
 └── go.mod

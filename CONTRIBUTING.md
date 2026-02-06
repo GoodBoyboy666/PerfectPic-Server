@@ -7,35 +7,47 @@
 ## 🤝 如何贡献
 
 ### 1. 提交 Issue (Reporting Issues)
+
 如果你发现了 Bug 或有好的功能建议，请首先：
-- 搜索现有的 [Issues](https://github.com/GoodBoyboy/perfect-pic-server/issues)，看看是否已经有人提出。
+
+- 搜索现有的 [Issues](https://github.com/GoodBoyboy666/PerfectPic-Server/issues)，看看是否已经有人提出。
 - 如果没有，请创建一个新的 Issue。请尽量详细描述问题复现步骤或功能需求。
 
 ### 2. 提交 Pull Request (Pull Requests)
+
 如果你想直接修改代码：
+
 1. **Fork** 本仓库到你的 GitHub 账户。
 2. **Clone** 你的 Fork 版本到本地：
+
    ```bash
-   git clone https://github.com/你的用户名/perfect-pic-server.git
+   git clone https://github.com/你的用户名/PerfectPic-Server.git
    ```
+
 3. 创建一个新的开发分支：
+
    ```bash
    git checkout -b feature/你的新功能
    # 或者
    git checkout -b fix/修复的问题
    ```
+
 4. 进行代码修改，并确保通过了所有测试。
 5. 提交更改（Commit）：
+
    ```bash
    git commit -m "feat: 添加了xx功能"
    # 或
    git commit -m "fix: 修复了xx bug"
    ```
+
    > 推荐使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范。
 6. 推送（Push）到你的远程仓库：
+
    ```bash
    git push origin feature/你的新功能
    ```
+
 7. 在 GitHub 上提交 **Pull Request (PR)** 到 `beta` 分支。
    - 请填写 PR 模板中的所有相关信息。
    - 我们的团队会尽快进行 Code Review。
@@ -49,6 +61,7 @@
    - 数据库 (SQLite/MySQL/PostgreSQL，根据配置)
 
 2. **本地运行**：
+
    ```bash
    # 下载依赖
    go mod download
