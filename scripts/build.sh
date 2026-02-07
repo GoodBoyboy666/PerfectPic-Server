@@ -7,7 +7,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 echo -e "\033[36m=========================================="
-echo -e "    🛠️  PerfectPic-Server 构建脚本  📦"
+echo -e "    🛠️  Perfect Pic Server 构建脚本  📦"
 echo -e "==========================================\033[0m"
 
 # 1. 检查环境
@@ -67,7 +67,7 @@ echo "  🕒 构建时间: $BUILD_TIME"
 
 # 3. 拉取前端代码
 echo -e "\n\033[33m[3/8] 📥 准备前端代码...\033[0m"
-FRONTEND_REPO_URL="https://github.com/GoodBoyboy666/PerfectPic-Web.git"
+FRONTEND_REPO_URL="https://github.com/GoodBoyboy666/perfect-pic-web.git"
 WEB_DIR="web-source"
 
 if [ -d "$WEB_DIR" ]; then

@@ -146,9 +146,9 @@ services:
 ### 2. 获取代码
 
 ```bash
-git clone https://github.com/GoodBoyboy666/PerfectPic-Server.git
+git clone https://github.com/GoodBoyboy666/perfect-pic-server.git
 
-cd PerfectPic-Server
+cd perfect-pic-server
 ```
 
 ### 3. 编译运行
@@ -168,7 +168,7 @@ chmod +x build.sh
 
 ### 4. 前后端分离部署（非 embed 模式）
 
-项目前端仓库为：[PerfectPic-Web](https://github.com/GoodBoyboy666/PerfectPic-Web)
+项目前端仓库为：[perfect-pic-web](https://github.com/GoodBoyboy666/perfect-pic-web)
 
 可以将前端与后端分离部署于不同的机器，只需将来自下列的路径的请求转发至后端即可：
 

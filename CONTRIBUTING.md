@@ -10,7 +10,7 @@
 
 如果你发现了 Bug 或有好的功能建议，请首先：
 
-- 搜索现有的 [Issues](https://github.com/GoodBoyboy666/PerfectPic-Server/issues)，看看是否已经有人提出。
+- 搜索现有的 [Issues](https://github.com/GoodBoyboy666/perfect-pic-server/issues)，看看是否已经有人提出。
 - 如果没有，请创建一个新的 Issue。请尽量详细描述问题复现步骤或功能需求。
 
 ### 2. 提交 Pull Request (Pull Requests)
@@ -21,15 +21,15 @@
 2. **Clone** 你的 Fork 版本到本地：
 
    ```bash
-   git clone https://github.com/你的用户名/PerfectPic-Server.git
+   git clone https://github.com/你的用户名/perfect-pic-server.git
    ```
 
-3. 创建一个新的开发分支：
+3. 在beta分支上创建一个新的开发分支：
 
    ```bash
-   git checkout -b feature/你的新功能
+   git checkout -b feature/你的新功能 beta
    # 或者
-   git checkout -b fix/修复的问题
+   git checkout -b fix/修复的问题 beta
    ```
 
 4. 进行代码修改，并确保通过了所有测试。

@@ -64,7 +64,7 @@ jobs:
       - name: 检出前端仓库
         uses: actions/checkout@v4
         with:
-          repository: GoodBoyboy666/PerfectPic-Web
+          repository: GoodBoyboy666/perfect-pic-web
           path: web-source
           ref: ${{ steps.target_frontend.outputs.REF }} # 使用上面动态计算的 Ref
 

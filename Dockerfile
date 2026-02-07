@@ -1,7 +1,7 @@
 # 第一阶段：构建前端
 FROM node:20-alpine AS frontend-builder
 
-ARG FRONTEND_REPO="https://github.com/GoodBoyboy666/PerfectPic-Web.git"
+ARG FRONTEND_REPO="https://github.com/GoodBoyboy666/perfect-pic-web.git"
 ARG FRONTEND_REF="origin/beta"
 ARG APP_VERSION="v0.0.0-docker"
 ARG BUILD_TIME="unknown"
