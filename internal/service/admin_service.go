@@ -30,6 +30,15 @@ type AdminUserUpdateInput struct {
 	Status        *int
 }
 
+type AdminCreateUserInput struct {
+	Username      string
+	Password      string
+	Email         *string
+	EmailVerified *bool
+	StorageQuota  *int64
+	Status        *int
+}
+
 type UpdateSettingPayload struct {
 	Key   string
 	Value string
@@ -165,16 +174,16 @@ func GetUserDetailForAdmin(id uint) (*model.User, error) {
 	return &user, nil
 }
 // CreateUserForAdmin 创建后台普通用户。
-func CreateUserForAdmin(username, password string) (*model.User, string, error) {
-	if ok, msg := utils.ValidatePassword(password); !ok {
+func CreateUserForAdmin(input AdminCreateUserInput) (*model.User, string, error) {
+	if ok, msg := utils.ValidatePassword(input.Password); !ok {
 		return nil, msg, nil
 	}
 
-	if ok, msg := utils.ValidateUsername(username); !ok {
+	if ok, msg := utils.ValidateUsername(input.Username); !ok {
 		return nil, msg, nil
 	}
 
-	usernameTaken, err := IsUsernameTaken(username, nil, true)
+	usernameTaken, err := IsUsernameTaken(input.Username, nil, true)
 	if err != nil {
 		return nil, "", err
 	}
@@ -182,15 +191,57 @@ func CreateUserForAdmin(username, password string) (*model.User, string, error) 
 		return nil, "用户名已存在", nil
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if input.Email != nil && *input.Email != "" {
+		if ok, msg := utils.ValidateEmail(*input.Email); !ok {
+			return nil, msg, nil
+		}
+
+		emailTaken, emailErr := IsEmailTaken(*input.Email, nil, true)
+		if emailErr != nil {
+			return nil, "", emailErr
+		}
+		if emailTaken {
+			return nil, "邮箱已被注册", nil
+		}
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, "", err
 	}
 
 	user := model.User{
-		Username: username,
+		Username: input.Username,
 		Password: string(hashedPassword),
 		Admin:    false,
+		Status:   1,
+	}
+
+	if input.Email != nil {
+		user.Email = *input.Email
+	}
+
+	if input.EmailVerified != nil {
+		user.EmailVerified = *input.EmailVerified
+	}
+
+	if input.StorageQuota != nil {
+		if *input.StorageQuota == -1 {
+			user.StorageQuota = nil
+		} else if *input.StorageQuota >= 0 {
+			quota := *input.StorageQuota
+			user.StorageQuota = &quota
+		} else {
+			return nil, "存储配额不能为负数（-1除外）", nil
+		}
+	}
+
+	if input.Status != nil {
+		if *input.Status == 1 || *input.Status == 2 {
+			user.Status = *input.Status
+		} else {
+			return nil, "无效的用户状态", nil
+		}
 	}
 
 	if err := db.DB.Create(&user).Error; err != nil {

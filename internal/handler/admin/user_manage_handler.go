@@ -67,8 +67,12 @@ func GetUserDetail(c *gin.Context) {
 
 // CreateUserRequest 创建用户请求结构体
 type CreateUserRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Username      string `json:"username" binding:"required"`
+	Password      string `json:"password" binding:"required"`
+	Email         *string `json:"email"`
+	EmailVerified *bool   `json:"email_verified"`
+	StorageQuota  *int64  `json:"storage_quota"`
+	Status        *int    `json:"status"`
 }
 
 // CreateUser 创建用户
@@ -79,9 +83,16 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	user, validateMsg, err := service.CreateUserForAdmin(req.Username, req.Password)
+	user, validateMsg, err := service.CreateUserForAdmin(service.AdminCreateUserInput{
+		Username:      req.Username,
+		Password:      req.Password,
+		Email:         req.Email,
+		EmailVerified: req.EmailVerified,
+		StorageQuota:  req.StorageQuota,
+		Status:        req.Status,
+	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "密码加密失败"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建用户失败"})
 		return
 	}
 	if validateMsg != "" {
