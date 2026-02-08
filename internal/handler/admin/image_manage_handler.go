@@ -2,7 +2,6 @@ package admin
 
 import (
 	"net/http"
-	"perfect-pic-server/internal/db"
 	"perfect-pic-server/internal/model"
 	"perfect-pic-server/internal/service"
 	"strconv"
@@ -31,26 +30,12 @@ func GetImageList(c *gin.Context) {
 		pageSize = 10
 	}
 
-	var total int64
-	var images []model.Image
-
-	query := db.DB.Model(&model.Image{})
-
-	if username != "" {
-		// 联表查询
-		query = query.Joins("JOIN users ON users.id = images.user_id").Where("users.username LIKE ?", "%"+username+"%")
-	}
-
-	if id != "" {
-		query = query.Where("images.id = ?", id)
-	}
-
-	query.Count(&total)
-
-	// Preload User 信息以便展示
-	result := query.Preload("User").Order("images.id desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&images)
-
-	if result.Error != nil {
+	images, total, page, pageSize, err := service.ListImagesForAdmin(service.AdminImageListParams{
+		PaginationQuery: service.PaginationQuery{Page: page, PageSize: pageSize},
+		Username:        username,
+		ID:              id,
+	})
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取图片列表失败"})
 		return
 	}
@@ -76,13 +61,13 @@ func GetImageList(c *gin.Context) {
 func DeleteImage(c *gin.Context) {
 	id := c.Param("id")
 
-	var image model.Image
-	if err := db.DB.First(&image, id).Error; err != nil {
+	image, err := service.GetImageByIDForAdmin(id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "图片不存在"})
 		return
 	}
 
-	if err := service.DeleteImage(&image); err != nil {
+	if err := service.DeleteImage(image); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除失败"})
 		return
 	}
@@ -110,9 +95,8 @@ func BatchDeleteImages(c *gin.Context) {
 		return
 	}
 
-	var images []model.Image
-	// Admin 可以删除任何图片
-	if err := db.DB.Where("id IN ?", req.Ids).Find(&images).Error; err != nil {
+	images, err := service.GetImagesByIDsForAdmin(req.Ids)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "查找图片失败"})
 		return
 	}

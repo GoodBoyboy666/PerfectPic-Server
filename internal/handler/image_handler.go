@@ -3,8 +3,6 @@ package handler
 import (
 	"log"
 	"net/http"
-	"perfect-pic-server/internal/db"
-	"perfect-pic-server/internal/model"
 	"perfect-pic-server/internal/service"
 	"strconv"
 	"strings"
@@ -70,23 +68,19 @@ func GetMyImages(c *gin.Context) {
 		pageSize = 10
 	}
 
-	var total int64
-	var images []model.Image
-
-	query := db.DB.Model(&model.Image{}).Where("user_id = ?", userID)
-
-	if filename != "" {
-		query = query.Where("filename LIKE ?", "%"+filename+"%")
-	}
-	if id != "" {
-		query = query.Where("id = ?", id)
+	uid, ok := userID.(uint)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的用户ID类型"})
+		return
 	}
 
-	query.Count(&total)
-
-	result := query.Order("id desc").Offset((page - 1) * pageSize).Limit(pageSize).Find(&images)
-
-	if result.Error != nil {
+	images, total, page, pageSize, err := service.ListUserImages(service.UserImageListParams{
+		PaginationQuery: service.PaginationQuery{Page: page, PageSize: pageSize},
+		UserID:          uid,
+		Filename:        filename,
+		ID:              id,
+	})
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取图片列表失败"})
 		return
 	}
@@ -103,15 +97,19 @@ func GetMyImages(c *gin.Context) {
 func DeleteMyImage(c *gin.Context) {
 	userID, _ := c.Get("id")
 	id := c.Param("id")
+	uid, ok := userID.(uint)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的用户ID类型"})
+		return
+	}
 
-	var image model.Image
-	// 查找图片，同时验证 user_id
-	if err := db.DB.Where("id = ? AND user_id = ?", id, userID).First(&image).Error; err != nil {
+	image, err := service.GetUserOwnedImage(id, uid)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "图片不存在或无权删除"})
 		return
 	}
 
-	if err := service.DeleteImage(&image); err != nil {
+	if err := service.DeleteImage(image); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除失败"})
 		return
 	}
@@ -122,6 +120,11 @@ func DeleteMyImage(c *gin.Context) {
 // BatchDeleteMyImages 批量删除用户自己的图片
 func BatchDeleteMyImages(c *gin.Context) {
 	userID, _ := c.Get("id")
+	uid, ok := userID.(uint)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的用户ID类型"})
+		return
+	}
 
 	var req struct {
 		Ids []uint `json:"ids" binding:"required"`
@@ -141,9 +144,8 @@ func BatchDeleteMyImages(c *gin.Context) {
 		return
 	}
 
-	var images []model.Image
-	// 查找图片，同时验证 user_id
-	if err := db.DB.Where("id IN ? AND user_id = ?", req.Ids, userID).Find(&images).Error; err != nil {
+	images, err := service.GetImagesByIDsForUser(req.Ids, uid)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "查找图片失败"})
 		return
 	}

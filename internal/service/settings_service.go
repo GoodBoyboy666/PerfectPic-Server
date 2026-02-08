@@ -40,6 +40,7 @@ var DefaultSettings = []model.Setting{
 	{Key: consts.ConfigTrustedProxies, Value: "", Desc: "可信代理列表（逗号分隔，留空表示不信任代理头；修改后需重启服务生效）", Category: "安全"},
 }
 
+// ClearCache 清空设置缓存。
 func ClearCache() {
 	settingsCache.Range(func(key, value interface{}) bool {
 		settingsCache.Delete(key)
@@ -47,6 +48,7 @@ func ClearCache() {
 	})
 }
 
+// InitializeSettings 将默认设置写入数据库，并同步描述与分类信息。
 func InitializeSettings() {
 	for _, def := range DefaultSettings {
 		var count int64
@@ -63,6 +65,7 @@ func InitializeSettings() {
 	}
 }
 
+// GetString 读取字符串配置值（优先缓存，其次数据库，最后默认值）。
 func GetString(key string) string {
 	if val, ok := settingsCache.Load(key); ok {
 		strVal, ok := val.(string)
@@ -101,6 +104,7 @@ func GetString(key string) string {
 	return setting.Value
 }
 
+// GetInt 读取整型配置值。
 func GetInt(key string) int {
 	valStr := GetString(key)
 	if valStr == "" {
@@ -115,6 +119,7 @@ func GetInt(key string) int {
 	return val
 }
 
+// GetInt64 读取 int64 配置值。
 func GetInt64(key string) int64 {
 	valStr := GetString(key)
 	if valStr == "" {
@@ -129,6 +134,7 @@ func GetInt64(key string) int64 {
 	return val
 }
 
+// GetFloat64 读取浮点型配置值。
 func GetFloat64(key string) float64 {
 	valStr := GetString(key)
 	if valStr == "" {
@@ -142,6 +148,7 @@ func GetFloat64(key string) float64 {
 	return val
 }
 
+// GetBool 读取布尔配置值。
 func GetBool(key string) bool {
 	valStr := GetString(key)
 	if valStr == "" {
