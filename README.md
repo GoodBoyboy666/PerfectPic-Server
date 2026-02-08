@@ -12,6 +12,7 @@
 * **🚀 高性能架构**
   * **多数据库适配**: 开箱即用支持 **SQLite** (零配置)，并可无缝切换至 **MySQL** 或 **PostgreSQL** 以适应生产环境。
   * **多级缓存加速**: 结合 HTTP 静态资源缓存与服务端内存缓存策略，大幅降低数据库压力，提升响应速度。
+  * **Redis 持久化支持**: 可选接入 **Redis**，用于限流状态、Auth 用户状态缓存与重置密码 Token 的跨实例持久化与共享。
   * **并发与稳定性**: 针对不同数据库自动调优连接池，支持高并发读写；配合优雅停机机制，保障业务处理不中断。
 
 * **🛡️ 安全可靠**
@@ -31,6 +32,7 @@
 * **Web 框架**: [Gin](https://github.com/gin-gonic/gin)
 * **ORM**: [GORM](https://gorm.io/)
 * **数据库**: SQLite, MySQL, PostgreSQL
+* **缓存/持久化**: Redis (可选) / Memory
 * **配置管理**: [Viper](https://github.com/spf13/viper)
 * **工具库**: UUID, Captcha, Lumberjack (日志)
 
@@ -243,6 +245,13 @@ smtp:
   password: "your_smtp_password"
   from: "examle@example.com"
   ssl: false
+
+redis:
+  enabled: false # 是否启用 Redis 持久化
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+  prefix: "perfect_pic"
 ```
 
 ### 环境变量
@@ -252,6 +261,13 @@ smtp:
 
 * `server.port` -> `PERFECT_PIC_SERVER_PORT`
 * `jwt.secret` -> `PERFECT_PIC_JWT_SECRET`
+* `redis.enabled` -> `PERFECT_PIC_REDIS_ENABLED`
+* `redis.addr` -> `PERFECT_PIC_REDIS_ADDR`
+* `redis.password` -> `PERFECT_PIC_REDIS_PASSWORD`
+* `redis.db` -> `PERFECT_PIC_REDIS_DB`
+* `redis.prefix` -> `PERFECT_PIC_REDIS_PREFIX`
+
+当 `redis.enabled=true` 且可连接时，IP 限流、中间件间隔限流、重置密码 token 会写入 Redis；Redis 不可用时自动降级为内存模式。
 
 ### 邮件模板
 

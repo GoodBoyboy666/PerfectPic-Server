@@ -25,6 +25,7 @@ type Config struct {
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	Upload   UploadConfig   `mapstructure:"upload"`
 	SMTP     SMTPConfig     `mapstructure:"smtp"`
+	Redis    RedisConfig    `mapstructure:"redis"`
 }
 
 type ServerConfig struct {
@@ -62,6 +63,14 @@ type SMTPConfig struct {
 	Password string `mapstructure:"password"`
 	From     string `mapstructure:"from"`
 	SSL      bool   `mapstructure:"ssl"`
+}
+
+type RedisConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	Addr     string `mapstructure:"addr"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
+	Prefix   string `mapstructure:"prefix"`
 }
 
 // Get 获取当前配置的快照（高性能无锁）
@@ -119,6 +128,11 @@ func InitConfig(customConfigDir string) {
 	v.SetDefault("smtp.password", "")
 	v.SetDefault("smtp.from", "")
 	v.SetDefault("smtp.ssl", false)
+	v.SetDefault("redis.enabled", false)
+	v.SetDefault("redis.addr", "127.0.0.1:6379")
+	v.SetDefault("redis.password", "")
+	v.SetDefault("redis.db", 0)
+	v.SetDefault("redis.prefix", "perfect_pic")
 
 	// 读取配置文件
 	if err := v.ReadInConfig(); err != nil {

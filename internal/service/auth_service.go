@@ -164,7 +164,7 @@ func VerifyEmail(token string) (bool, error) {
 		return false, newAuthError(AuthErrorValidation, "验证链接已失效或不正确")
 	}
 
-	if claims.Type!="email_verify"{
+	if claims.Type != "email_verify" {
 		return false, newAuthError(AuthErrorValidation, "无效的验证 Token 类型")
 	}
 

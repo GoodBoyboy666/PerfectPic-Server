@@ -67,8 +67,8 @@ func GetUserDetail(c *gin.Context) {
 
 // CreateUserRequest 创建用户请求结构体
 type CreateUserRequest struct {
-	Username      string `json:"username" binding:"required"`
-	Password      string `json:"password" binding:"required"`
+	Username      string  `json:"username" binding:"required"`
+	Password      string  `json:"password" binding:"required"`
 	Email         *string `json:"email"`
 	EmailVerified *bool   `json:"email_verified"`
 	StorageQuota  *int64  `json:"storage_quota"`

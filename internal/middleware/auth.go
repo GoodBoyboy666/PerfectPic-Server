@@ -1,10 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"perfect-pic-server/internal/db"
 	"perfect-pic-server/internal/model"
+	"perfect-pic-server/internal/service"
 	"perfect-pic-server/internal/utils"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +31,13 @@ type cachedStatus struct {
 // ClearUserStatusCache 清除指定用户的状态缓存
 func ClearUserStatusCache(userID uint) {
 	statusCache.Delete(userID)
+
+	if redisClient := service.GetRedisClient(); redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		key := service.RedisKey("auth", "user_status", strconv.FormatUint(uint64(userID), 10))
+		_ = redisClient.Del(ctx, key).Err()
+	}
 }
 
 func JWTAuth() gin.HandlerFunc {
@@ -81,20 +91,47 @@ func UserStatusCheck() gin.HandlerFunc {
 			return
 		}
 
-		var currentStatus int
+		var (
+			currentStatus int
+			statusFound   bool
+		)
 
-		// 尝试从缓存获取
-		if val, ok := statusCache.Load(uid); ok {
-			cached, typeOk := val.(cachedStatus)
-			if typeOk {
-				if time.Now().Before(cached.ExpiresAt) {
-					currentStatus = cached.Status
+		// 优先从 Redis 读取
+		if redisClient := service.GetRedisClient(); redisClient != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			key := service.RedisKey("auth", "user_status", strconv.FormatUint(uint64(uid), 10))
+			cachedStatusStr, err := redisClient.Get(ctx, key).Result()
+			if err == nil {
+				if parsedStatus, parseErr := strconv.Atoi(cachedStatusStr); parseErr == nil {
+					currentStatus = parsedStatus
+					statusFound = true
+					statusCache.Store(uid, cachedStatus{
+						Status:    currentStatus,
+						ExpiresAt: time.Now().Add(statusCacheTTL),
+					})
+				}
+			}
+		}
+
+		// Redis 未命中或不可用时，回退本地内存缓存
+		if !statusFound {
+			if val, ok := statusCache.Load(uid); ok {
+				cached, typeOk := val.(cachedStatus)
+				if typeOk {
+					if time.Now().Before(cached.ExpiresAt) {
+						currentStatus = cached.Status
+						statusFound = true
+					} else {
+						statusCache.Delete(uid)
+					}
 				}
 			}
 		}
 
 		// 如果缓存未命中或过期，查询数据库
-		if currentStatus == 0 {
+		if !statusFound {
 			var user model.User
 			if err := db.DB.Select("status").First(&user, uid).Error; err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "用户不存在"})
@@ -108,6 +145,14 @@ func UserStatusCheck() gin.HandlerFunc {
 				Status:    currentStatus,
 				ExpiresAt: time.Now().Add(statusCacheTTL),
 			})
+
+			if redisClient := service.GetRedisClient(); redisClient != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+
+				key := service.RedisKey("auth", "user_status", strconv.FormatUint(uint64(uid), 10))
+				_ = redisClient.Set(ctx, key, strconv.Itoa(currentStatus), statusCacheTTL).Err()
+			}
 		}
 
 		if currentStatus == 2 {

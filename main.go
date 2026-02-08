@@ -39,6 +39,8 @@ func main() {
 	flag.Parse()
 
 	config.InitConfig(*configDir)
+	_ = service.GetRedisClient()
+	defer func() { _ = service.CloseRedisClient() }()
 	db.InitDB()
 	service.InitializeSettings()
 

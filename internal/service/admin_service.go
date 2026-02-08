@@ -173,7 +173,10 @@ func GetUserDetailForAdmin(id uint) (*model.User, error) {
 	}
 	return &user, nil
 }
+
 // CreateUserForAdmin 创建后台普通用户。
+//
+//nolint:gocyclo // 管理员创建用户场景校验分支较多，后续再拆分
 func CreateUserForAdmin(input AdminCreateUserInput) (*model.User, string, error) {
 	if ok, msg := utils.ValidatePassword(input.Password); !ok {
 		return nil, msg, nil
@@ -252,6 +255,8 @@ func CreateUserForAdmin(input AdminCreateUserInput) (*model.User, string, error)
 }
 
 // PrepareUserUpdatesForAdmin 校验后台用户更新输入并构建可持久化的 updates。
+//
+//nolint:gocyclo // 管理员更新用户场景校验分支较多，后续再拆分
 func PrepareUserUpdatesForAdmin(userID uint, req AdminUserUpdateInput) (map[string]interface{}, string, error) {
 	updates := make(map[string]interface{})
 
