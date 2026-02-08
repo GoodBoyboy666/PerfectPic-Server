@@ -139,7 +139,6 @@ func UserStatusCheck() gin.HandlerFunc {
 				return
 			}
 			currentStatus = user.Status
-			statusFound = true
 
 			// 写入缓存
 			statusCache.Store(uid, cachedStatus{
