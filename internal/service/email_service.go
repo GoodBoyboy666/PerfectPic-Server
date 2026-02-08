@@ -318,6 +318,7 @@ func SendPasswordResetEmail(toEmail, username, resetUrl string) error {
 	return smtp.SendMail(addr, auth, fromAddr, []string{toAddr}, msg)
 }
 
+// sendMailWithSSL 使用 TLS 直连方式发送邮件（常用于 465 端口）。
 func sendMailWithSSL(addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
 	cfg := config.Get()
 	// log.Printf("[Email] 正在使用 SSL 连接至 %s 发送邮件", addr)
@@ -438,6 +439,7 @@ func renderTemplate(tpl string, data interface{}) (string, error) {
 	return buf.String(), nil
 }
 
+// formatAddressHeader 规范化邮箱头部地址并返回 header 展示值与裸邮箱地址。
 func formatAddressHeader(input string) (string, string, error) {
 	// 解析地址 (如果格式不对，这里直接报错，起到 Validation 作用)
 	addr, err := mail.ParseAddress(input)
