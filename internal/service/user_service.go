@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"perfect-pic-server/internal/consts"
 	"perfect-pic-server/internal/db"
 	"perfect-pic-server/internal/model"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -40,6 +42,25 @@ func GenerateForgetPasswordToken(userID uint) (string, error) {
 		Token:     token,
 		ExpiresAt: time.Now().Add(15 * time.Minute),
 	}
+
+	if redisClient := GetRedisClient(); redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		// 保证一个用户只有一个有效 token
+		userKey := RedisKey("password_reset", "user", strconv.FormatUint(uint64(userID), 10))
+		if oldToken, err := redisClient.Get(ctx, userKey).Result(); err == nil && oldToken != "" {
+			oldTokenKey := RedisKey("password_reset", "token", oldToken)
+			_ = redisClient.Del(ctx, oldTokenKey).Err()
+		}
+
+		tokenKey := RedisKey("password_reset", "token", token)
+		if err := redisClient.Set(ctx, tokenKey, strconv.FormatUint(uint64(userID), 10), 15*time.Minute).Err(); err == nil {
+			_ = redisClient.Set(ctx, userKey, token, 15*time.Minute).Err()
+			return token, nil
+		}
+	}
+
 	// 存储（覆盖之前的）
 	passwordResetStore.Store(userID, resetToken)
 	return token, nil
@@ -47,6 +68,25 @@ func GenerateForgetPasswordToken(userID uint) (string, error) {
 
 // VerifyForgetPasswordToken 验证忘记密码 Token
 func VerifyForgetPasswordToken(token string) (uint, bool) {
+	if redisClient := GetRedisClient(); redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		tokenKey := RedisKey("password_reset", "token", token)
+		uidStr, err := redisClient.Get(ctx, tokenKey).Result()
+		if err == nil {
+			_ = redisClient.Del(ctx, tokenKey).Err()
+
+			uid, parseErr := strconv.ParseUint(uidStr, 10, 64)
+			if parseErr == nil {
+				userKey := RedisKey("password_reset", "user", strconv.FormatUint(uid, 10))
+				_ = redisClient.Del(ctx, userKey).Err()
+				return uint(uid), true
+			}
+			return 0, false
+		}
+	}
+
 	var foundUserID uint
 	var valid bool
 

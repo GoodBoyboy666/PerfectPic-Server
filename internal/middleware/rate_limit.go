@@ -1,14 +1,17 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"perfect-pic-server/internal/consts"
 	"perfect-pic-server/internal/service"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/time/rate"
 )
 
@@ -102,6 +105,20 @@ func RateLimitMiddleware(rpsKey string, burstKey string) gin.HandlerFunc {
 
 		// 获取 IP 对应的 limiter
 		ip := c.ClientIP()
+
+		if redisClient := service.GetRedisClient(); redisClient != nil {
+			allowed, err := allowByRedisRateLimit(redisClient, "rate", rpsKey, burstKey, ip, currentRPS, currentBurst)
+			if err == nil {
+				if !allowed {
+					c.JSON(http.StatusTooManyRequests, gin.H{"error": "请求过于频繁，请稍后再试"})
+					c.Abort()
+					return
+				}
+				c.Next()
+				return
+			}
+		}
+
 		l := limiter.getLimiter(ip)
 
 		// 动态更新 limit 和 burst (如果配置发生变更)
@@ -152,6 +169,19 @@ func IntervalRateMiddleware(interval time.Duration) gin.HandlerFunc {
 
 		ip := c.ClientIP()
 
+		if redisClient := service.GetRedisClient(); redisClient != nil {
+			ok, err := allowByRedisInterval(redisClient, "interval", ip, interval)
+			if err == nil {
+				if !ok {
+					c.JSON(http.StatusTooManyRequests, gin.H{"error": fmt.Sprintf("操作过于频繁，请等待 %v 后再试", interval)})
+					c.Abort()
+					return
+				}
+				c.Next()
+				return
+			}
+		}
+
 		val, ok := requestTimes.Load(ip)
 		if ok {
 			if t, ok := val.(time.Time); ok {
@@ -166,4 +196,54 @@ func IntervalRateMiddleware(interval time.Duration) gin.HandlerFunc {
 		requestTimes.Store(ip, time.Now())
 		c.Next()
 	}
+}
+
+func allowByRedisInterval(client *redis.Client, namespace, ip string, interval time.Duration) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	key := service.RedisKey("middleware", namespace, ip)
+	ok, err := client.SetNX(ctx, key, "1", interval).Result()
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
+func allowByRedisRateLimit(client *redis.Client, namespace, rpsKey, burstKey, ip string, rps float64, burst int) (bool, error) {
+	if rps <= 0 || burst <= 0 {
+		return true, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	now := time.Now().Unix()
+	window := int64(1)
+	if rps < 1 {
+		window = int64(1 / rps)
+		if window < 1 {
+			window = 1
+		}
+	}
+	bucket := now / window
+	key := service.RedisKey("middleware", namespace, rpsKey, burstKey, ip, strconv.FormatInt(bucket, 10))
+
+	count, err := client.Incr(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+
+	if count == 1 {
+		expire := time.Duration(window)*time.Second + 2*time.Second
+		if expireErr := client.Expire(ctx, key, expire).Err(); expireErr != nil {
+			return false, expireErr
+		}
+	}
+
+	if count > int64(burst) {
+		return false, nil
+	}
+
+	return true, nil
 }
