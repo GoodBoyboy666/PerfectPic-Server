@@ -95,23 +95,6 @@ func setupStaticFiles(r *gin.Engine, uploadPath, avatarPath string) {
 		StaticFS("", gin.Dir(avatarPath, false))
 }
 
-func setupFrontend(r *gin.Engine, distFS fs.FS) []byte {
-	var indexData []byte
-
-	if distFS != nil {
-		assetsFS, _ := fs.Sub(distFS, "assets")
-		r.StaticFS("/assets", http.FS(assetsFS))
-
-		// 预读取 index.html
-		var err error
-		indexData, err = fs.ReadFile(distFS, "index.html")
-		if err != nil {
-			log.Printf("⚠️ 警告: 无法读取 frontend/index.html: %v", err)
-		}
-	}
-	return indexData
-}
-
 func getNoRouteHandler(distFS fs.FS, indexData []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/api") {
@@ -239,7 +222,7 @@ func checkSecurePath(path string) {
 
 	// 检查是否直接指向项目根目录
 	if absPath == cwd {
-		log.Fatalf("❌ 安全配置错误: 静态资源目录 '%s' 不能设置为项目根目录！这会导致源代码泄露。", path)
+		log.Fatalf("❌ 安全配置错误: 静态资源目录 '%s' 不能设置为项目根目录！这会导致源代码/SQLite数据库泄露。", path)
 	}
 
 	// 检查路径安全
