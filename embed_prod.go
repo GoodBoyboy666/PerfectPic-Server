@@ -5,6 +5,10 @@ package main
 import (
 	"embed"
 	"io/fs"
+	"log"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 //go:embed all:frontend
@@ -19,4 +23,21 @@ func GetFrontendAssets() fs.FS {
 		panic(err)
 	}
 	return f
+}
+
+func setupFrontend(r *gin.Engine, distFS fs.FS) []byte {
+	assetsFS, err := fs.Sub(distFS, "assets")
+	if err == nil {
+		r.StaticFS("/assets", http.FS(assetsFS))
+	} else {
+		log.Printf("⚠️ 警告: 无法挂载 frontend/assets: %v", err)
+	}
+
+	indexData, err := fs.ReadFile(distFS, "index.html")
+	if err != nil {
+		log.Printf("⚠️ 警告: 无法读取 frontend/index.html: %v", err)
+		return nil
+	}
+
+	return indexData
 }
