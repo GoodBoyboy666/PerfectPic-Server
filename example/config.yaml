@@ -13,7 +13,7 @@ database:
   ssl: false # enable TLS/SSL for mysql/postgres
 
 jwt:
-  secret: "change_this_to_a_secure_random_string"
+  secret: "perfect_pic_secret"
   expiration_hours: 24
 
 upload:

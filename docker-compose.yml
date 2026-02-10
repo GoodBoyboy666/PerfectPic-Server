@@ -3,7 +3,7 @@ services:
     image: ghcr.io/goodboyboy666/perfect-pic-server:latest
     container_name: perfect-pic
     ports:
-      - "${PERFECT_PIC_PORT}:8080"
+      - "${PERFECT_PIC_HOST_PORT}:8080"
     volumes:
       - ./config:/data/config
       - ./database:/data/database

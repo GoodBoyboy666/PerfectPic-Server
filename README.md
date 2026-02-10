@@ -58,7 +58,7 @@ chmod +x perfect-pic-server
 
 # 设置环境变量并启动
 export PERFECT_PIC_SERVER_MODE=release
-export PERFECT_PIC_JWT_SECRET=your_secure_random_secret_key
+export PERFECT_PIC_JWT_SECRET=perfect_pic_secret
 ./perfect-pic-server
 ```
 
@@ -72,7 +72,7 @@ export PERFECT_PIC_JWT_SECRET=your_secure_random_secret_key
 
 ```powershell
 $env:PERFECT_PIC_SERVER_MODE="release"
-$env:PERFECT_PIC_JWT_SECRET="your_secure_random_secret_key"
+$env:PERFECT_PIC_JWT_SECRET="perfect_pic_secret"
 .\perfect-pic-server.exe
 ```
 
@@ -107,7 +107,7 @@ docker run -d \
   --name perfect-pic \
   -p 8080:8080 \
   -e PERFECT_PIC_SERVER_MODE=release \
-  -e PERFECT_PIC_JWT_SECRET=xxxxx \
+  -e PERFECT_PIC_JWT_SECRET=perfect_pic_secret \
   -v $PWD/config:/data/config \
   -v $PWD/database:/data/database \
   -v $PWD/uploads:/app/uploads \
@@ -124,7 +124,7 @@ docker run -d \
 项目根目录已提供 `docker-compose.yml`，可直接使用：
 
 ```bash
-# 复制环境变量模板（必须按需修改）
+# 复制环境变量模板（不可直接使用，必须按需修改）
 cp .env.example .env
 
 # 后台启动
@@ -229,7 +229,7 @@ database:
   ssl: false
 
 jwt:
-  secret: "change_this_to_a_secure_random_string"
+  secret: "perfect_pic_secret"
   expiration_hours: 24
 
 upload:
