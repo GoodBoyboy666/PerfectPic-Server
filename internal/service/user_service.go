@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"perfect-pic-server/internal/config"
@@ -165,7 +166,7 @@ func DeleteUserFiles(userID uint) error {
 	// RemoveAll 删除路径及其包含的任何子项。如果路径不存在，RemoveAll 返回 nil（无错误）。
 	if err := os.RemoveAll(userAvatarDir); err != nil {
 		// 记录日志或打印错误，但不中断后续操作
-		fmt.Printf("Warning: Failed to delete avatar directory for user %d: %v\n", userID, err)
+		log.Printf("Warning: Failed to delete avatar directory for user %d: %v\n", userID, err)
 	}
 
 	// 2. 查找并删除用户上传的所有图片
@@ -193,13 +194,13 @@ func DeleteUserFiles(userID uint) error {
 		localPath := filepath.FromSlash(img.Path)
 		fullPath, secureErr := utils.SecureJoin(uploadRootAbs, localPath)
 		if secureErr != nil {
-			fmt.Printf("Warning: Skip unsafe image path for user %d (%s): %v\n", userID, img.Path, secureErr)
+			log.Printf("Warning: Skip unsafe image path for user %d (%s): %v\n", userID, img.Path, secureErr)
 			continue
 		}
 
 		if err := os.Remove(fullPath); err != nil {
 			if !os.IsNotExist(err) {
-				fmt.Printf("Warning: Failed to delete image file %s: %v\n", fullPath, err)
+				log.Printf("Warning: Failed to delete image file %s: %v\n", fullPath, err)
 			}
 		}
 	}
