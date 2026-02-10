@@ -11,6 +11,7 @@ import (
 	"perfect-pic-server/internal/consts"
 	"perfect-pic-server/internal/db"
 	"perfect-pic-server/internal/model"
+	"perfect-pic-server/internal/utils"
 	"strconv"
 	"sync"
 	"time"
@@ -143,7 +144,23 @@ func DeleteUserFiles(userID uint) error {
 	if avatarRoot == "" {
 		avatarRoot = "uploads/avatars"
 	}
-	userAvatarDir := filepath.Join(avatarRoot, fmt.Sprintf("%d", userID))
+	avatarRootAbs, err := filepath.Abs(avatarRoot)
+	if err != nil {
+		return fmt.Errorf("failed to resolve avatar root: %w", err)
+	}
+	// 先校验头像根目录节点本身，避免根目录直接是符号链接。
+	if err := utils.EnsurePathNotSymlink(avatarRootAbs); err != nil {
+		return fmt.Errorf("avatar root symlink risk: %w", err)
+	}
+
+	userAvatarDir, err := utils.SecureJoin(avatarRootAbs, fmt.Sprintf("%d", userID))
+	if err != nil {
+		return fmt.Errorf("failed to build avatar dir: %w", err)
+	}
+	// 在执行 RemoveAll 前再做一次链路检查，确保目标目录链路未被并发替换为符号链接。
+	if err := utils.EnsureNoSymlinkBetween(avatarRootAbs, userAvatarDir); err != nil {
+		return fmt.Errorf("avatar dir symlink risk: %w", err)
+	}
 
 	// RemoveAll 删除路径及其包含的任何子项。如果路径不存在，RemoveAll 返回 nil（无错误）。
 	if err := os.RemoveAll(userAvatarDir); err != nil {
@@ -162,11 +179,23 @@ func DeleteUserFiles(userID uint) error {
 	if uploadRoot == "" {
 		uploadRoot = "uploads/imgs"
 	}
+	uploadRootAbs, err := filepath.Abs(uploadRoot)
+	if err != nil {
+		return fmt.Errorf("failed to resolve upload root: %w", err)
+	}
+	// 先校验上传根目录节点本身，避免根目录直接是符号链接。
+	if err := utils.EnsurePathNotSymlink(uploadRootAbs); err != nil {
+		return fmt.Errorf("upload root symlink risk: %w", err)
+	}
 
 	for _, img := range images {
 		// 转换路径分隔符以适配当前系统 (DB中存储的是 web 格式 '/')
 		localPath := filepath.FromSlash(img.Path)
-		fullPath := filepath.Join(uploadRoot, localPath)
+		fullPath, secureErr := utils.SecureJoin(uploadRootAbs, localPath)
+		if secureErr != nil {
+			fmt.Printf("Warning: Skip unsafe image path for user %d (%s): %v\n", userID, img.Path, secureErr)
+			continue
+		}
 
 		if err := os.Remove(fullPath); err != nil {
 			if !os.IsNotExist(err) {

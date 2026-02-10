@@ -66,21 +66,23 @@ func ValidateImageFile(file *multipart.FileHeader) (bool, string, error) {
 
 // ProcessImageUpload 处理图片上传核心业务
 // 包括：配额检查、文件保存、数据库记录
+//
+//nolint:gocyclo
 func ProcessImageUpload(file *multipart.FileHeader, uid uint) (*model.Image, string, error) {
-	// 1. 验证文件
+	// 验证文件
 	valid, ext, err := ValidateImageFile(file)
 	if !valid {
 		return nil, "", err
 	}
 
-	// 2. 检查配额 (使用 StorageUsed 字段)
+	// 检查配额 (使用 StorageUsed 字段)
 	var user model.User
 	if err := db.DB.First(&user, uid).Error; err != nil {
 		log.Printf("Get user error: %v\n", err)
 		return nil, "", errors.New("查询用户信息失败")
 	}
 
-	// 如果 StorageUsed 为 0 但不是新用户，可能需要同步（可选，这里假设已同步）
+	// 如果 StorageUsed 为 0 但不是新用户，可能需要同步
 	usedSize := user.StorageUsed
 
 	var quota int64
@@ -97,7 +99,7 @@ func ProcessImageUpload(file *multipart.FileHeader, uid uint) (*model.Image, str
 		return nil, "", fmt.Errorf("存储空间不足，上传失败。当前已用: %d B, 剩余: %d B", usedSize, quota-usedSize)
 	}
 
-	// 3. 准备路径
+	// 准备路径
 	now := time.Now()
 	datePath := filepath.Join(now.Format("2006"), now.Format("01"), now.Format("02"))
 
@@ -106,18 +108,40 @@ func ProcessImageUpload(file *multipart.FileHeader, uid uint) (*model.Image, str
 	if uploadRoot == "" {
 		uploadRoot = "uploads/imgs"
 	}
+	uploadRootAbs, err := filepath.Abs(uploadRoot)
+	if err != nil {
+		return nil, "", errors.New("系统错误: 上传目录解析失败")
+	}
+	// 先检查上传根目录节点本身不是符号链接（防止根目录直接指向外部路径）。
+	if err := utils.EnsurePathNotSymlink(uploadRootAbs); err != nil {
+		log.Printf("Upload root security check failed: %v\n", err)
+		return nil, "", errors.New("系统错误: 上传目录存在符号链接风险")
+	}
 	// 完整的磁盘文件夹路径
-	fullDir := filepath.Join(uploadRoot, datePath)
+	fullDir, err := utils.SecureJoin(uploadRootAbs, datePath)
+	if err != nil {
+		log.Printf("SecureJoin dir error: %v\n", err)
+		return nil, "", errors.New("系统错误: 非法存储目录")
+	}
 
 	// 自动创建文件夹
 	if err := os.MkdirAll(fullDir, 0755); err != nil {
 		log.Printf("MkdirAll error: %v\n", err)
 		return nil, "", errors.New("系统错误: 无法创建存储目录")
 	}
+	// 目录创建后再次检查链路，降低 TOCTOU 风险。
+	if err := utils.EnsureNoSymlinkBetween(uploadRootAbs, fullDir); err != nil {
+		log.Printf("Upload dir security check failed: %v\n", err)
+		return nil, "", errors.New("系统错误: 存储目录存在符号链接风险")
+	}
 
 	// 生成唯一文件名
 	newFilename := uuid.New().String() + ext
-	dst := filepath.Join(fullDir, newFilename)
+	dst, err := utils.SecureJoin(fullDir, newFilename)
+	if err != nil {
+		log.Printf("SecureJoin dst error: %v\n", err)
+		return nil, "", errors.New("系统错误: 非法文件路径")
+	}
 
 	// 保存文件 (IO 操作放在事务前，如果 DB 失败则删除文件)
 	src, err := file.Open()
@@ -136,7 +160,7 @@ func ProcessImageUpload(file *multipart.FileHeader, uid uint) (*model.Image, str
 		return nil, "", errors.New("文件保存失败")
 	}
 
-	// 4. 数据库操作 (事务)
+	// 数据库操作 (事务)
 	relativePath := filepath.ToSlash(filepath.Join(
 		now.Format("2006"), now.Format("01"), now.Format("02"), newFilename))
 
@@ -177,12 +201,25 @@ func DeleteImage(image *model.Image) error {
 	if uploadRoot == "" {
 		uploadRoot = "uploads/imgs"
 	}
+	uploadRootAbs, err := filepath.Abs(uploadRoot)
+	if err != nil {
+		return errors.New("系统错误: 上传目录解析失败")
+	}
+	// 删除前先校验上传根目录节点本身，避免根目录被替换为符号链接。
+	if err := utils.EnsurePathNotSymlink(uploadRootAbs); err != nil {
+		log.Printf("DeleteImage upload root security check failed: %v\n", err)
+		return errors.New("系统错误: 上传目录存在符号链接风险")
+	}
 
 	// 拼接完整物理路径
-	fullPath := filepath.Join(uploadRoot, image.Path)
+	fullPath, err := utils.SecureJoin(uploadRootAbs, image.Path)
+	if err != nil {
+		log.Printf("DeleteImage secure path error: %v\n", err)
+		return errors.New("系统错误: 非法文件路径")
+	}
 
 	// 使用事务确保数据库操作原子性
-	err := db.DB.Transaction(func(tx *gorm.DB) error {
+	err = db.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(image).Error; err != nil {
 			return err
 		}
@@ -225,15 +262,29 @@ func BatchDeleteImages(images []model.Image) error {
 	if uploadRoot == "" {
 		uploadRoot = "uploads/imgs"
 	}
+	uploadRootAbs, err := filepath.Abs(uploadRoot)
+	if err != nil {
+		return errors.New("系统错误: 上传目录解析失败")
+	}
+	// 批量删除前先校验上传根目录节点本身，避免根目录被替换为符号链接。
+	if err := utils.EnsurePathNotSymlink(uploadRootAbs); err != nil {
+		log.Printf("BatchDeleteImages upload root security check failed: %v\n", err)
+		return errors.New("系统错误: 上传目录存在符号链接风险")
+	}
 
 	for _, img := range images {
 		userSizeMap[img.UserID] += img.Size
 		imageIDs = append(imageIDs, img.ID)
-		pathsToDelete = append(pathsToDelete, filepath.Join(uploadRoot, img.Path))
+		fullPath, secureErr := utils.SecureJoin(uploadRootAbs, img.Path)
+		if secureErr != nil {
+			log.Printf("BatchDeleteImages secure path error: %v\n", secureErr)
+			continue
+		}
+		pathsToDelete = append(pathsToDelete, fullPath)
 	}
 
 	// 开启单一事务处理所有数据库变更
-	err := db.DB.Transaction(func(tx *gorm.DB) error {
+	err = db.DB.Transaction(func(tx *gorm.DB) error {
 		// 批量删除图片记录
 		if err := tx.Where("id IN ?", imageIDs).Delete(&model.Image{}).Error; err != nil {
 			return err
@@ -273,21 +324,43 @@ func UpdateUserAvatar(user *model.User, file *multipart.FileHeader) (string, err
 	if avatarRoot == "" {
 		avatarRoot = "uploads/avatars"
 	}
+	avatarRootAbs, err := filepath.Abs(avatarRoot)
+	if err != nil {
+		return "", errors.New("系统错误: 头像目录解析失败")
+	}
+	// 先检查头像根目录节点本身不是符号链接。
+	if err := utils.EnsurePathNotSymlink(avatarRootAbs); err != nil {
+		log.Printf("Avatar root security check failed: %v\n", err)
+		return "", errors.New("系统错误: 头像目录存在符号链接风险")
+	}
 
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	// userIdStr for path
 	userIdStr := fmt.Sprintf("%v", user.ID)
-	storageDir := filepath.Join(avatarRoot, userIdStr)
+	storageDir, err := utils.SecureJoin(avatarRootAbs, userIdStr)
+	if err != nil {
+		log.Printf("Avatar storage dir error: %v\n", err)
+		return "", errors.New("系统错误: 非法头像目录")
+	}
 
 	// 自动创建文件夹
 	if err := os.MkdirAll(storageDir, 0755); err != nil {
 		log.Printf("MkdirAll error: %v\n", err)
 		return "", errors.New("系统错误: 无法创建存储目录")
 	}
+	// 用户目录创建后再次检查链路，确保新增层级未被符号链接替换。
+	if err := utils.EnsureNoSymlinkBetween(avatarRootAbs, storageDir); err != nil {
+		log.Printf("Avatar storage security check failed: %v\n", err)
+		return "", errors.New("系统错误: 头像目录存在符号链接风险")
+	}
 
 	// 生成唯一文件名
 	newFilename := uuid.New().String() + ext
-	dstPath := filepath.Join(storageDir, newFilename)
+	dstPath, err := utils.SecureJoin(storageDir, newFilename)
+	if err != nil {
+		log.Printf("Avatar dst secure join error: %v\n", err)
+		return "", errors.New("系统错误: 非法头像文件路径")
+	}
 
 	// 打开源文件
 	src, err := file.Open()
@@ -323,7 +396,12 @@ func UpdateUserAvatar(user *model.User, file *multipart.FileHeader) (string, err
 
 	// 删除旧头像
 	if oldAvatar != "" {
-		_ = os.Remove(filepath.Join(storageDir, oldAvatar))
+		oldAvatarPath, secureErr := utils.SecureJoin(storageDir, oldAvatar)
+		if secureErr != nil {
+			log.Printf("Old avatar secure path error: %v\n", secureErr)
+		} else {
+			_ = os.Remove(oldAvatarPath)
+		}
 	}
 
 	return newFilename, nil
@@ -341,9 +419,27 @@ func RemoveUserAvatar(user *model.User) error {
 	if avatarRoot == "" {
 		avatarRoot = "uploads/avatars"
 	}
+	avatarRootAbs, err := filepath.Abs(avatarRoot)
+	if err != nil {
+		return errors.New("系统错误: 头像目录解析失败")
+	}
+	// 删除头像前先校验头像根目录节点本身，防止根目录符号链接穿透。
+	if err := utils.EnsurePathNotSymlink(avatarRootAbs); err != nil {
+		log.Printf("RemoveUserAvatar root security check failed: %v\n", err)
+		return errors.New("系统错误: 头像目录存在符号链接风险")
+	}
 
 	userIdStr := fmt.Sprintf("%v", user.ID)
-	oldAvatarPath := filepath.Join(avatarRoot, userIdStr, user.Avatar)
+	storageDir, err := utils.SecureJoin(avatarRootAbs, userIdStr)
+	if err != nil {
+		log.Printf("RemoveUserAvatar storage dir secure join error: %v\n", err)
+		return errors.New("系统错误: 非法头像目录")
+	}
+	oldAvatarPath, err := utils.SecureJoin(storageDir, user.Avatar)
+	if err != nil {
+		log.Printf("RemoveUserAvatar file secure join error: %v\n", err)
+		return errors.New("系统错误: 非法头像文件路径")
+	}
 
 	// 更新数据库
 	if err := db.DB.Model(user).Select("Avatar").Updates(map[string]interface{}{"avatar": ""}).Error; err != nil {
