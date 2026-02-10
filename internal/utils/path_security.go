@@ -157,7 +157,7 @@ func ensureWithinBase(baseAbs, targetAbs string) error {
 		return fmt.Errorf("非法路径: %w", err)
 	}
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return fmt.Errorf("非法路径: 目标超出上传目录")
+		return fmt.Errorf("非法路径: 目标超出基目录")
 	}
 	return nil
 }
