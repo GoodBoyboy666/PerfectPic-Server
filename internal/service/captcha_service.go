@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -334,8 +335,13 @@ func verifyGeetestCaptcha(cfg geetestConfig, token string) (bool, string) {
 		return false, "请完成人机验证"
 	}
 
+	tokenBytes, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return false, "验证码参数格式错误"
+	}
+
 	var payload geetestVerifyTokenPayload
-	if err := json.Unmarshal([]byte(token), &payload); err != nil {
+	if err := json.Unmarshal(tokenBytes, &payload); err != nil {
 		return false, "验证码参数格式错误"
 	}
 
