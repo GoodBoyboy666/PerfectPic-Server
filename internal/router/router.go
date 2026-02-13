@@ -41,7 +41,8 @@ func InitRouter(r *gin.Engine) {
 		api.POST("/auth/password/reset", handler.ResetPassword)
 
 		api.GET("/register", handler.GetRegisterState)
-		api.GET("/captcha", authLimiter, handler.GetCaptcha)
+		api.GET("/captcha", handler.GetCaptcha)
+		api.GET("/captcha/image", authLimiter, handler.GetCaptchaImage)
 		api.GET("/webinfo", handler.GetWebInfo)
 		api.GET("/image_prefix", handler.GetImagePrefix)
 		api.GET("/avatar_prefix", handler.GetAvatarPrefix)
