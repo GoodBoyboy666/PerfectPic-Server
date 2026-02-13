@@ -1,8 +1,9 @@
 package model
 
 type Setting struct {
-	Key      string `gorm:"primaryKey"`
-	Value    string
-	Desc     string
-	Category string
+	Key       string `gorm:"primaryKey"`
+	Value     string
+	Desc      string
+	Category  string
+	Sensitive bool
 }

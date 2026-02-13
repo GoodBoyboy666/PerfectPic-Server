@@ -97,6 +97,14 @@ func ListSettingsForAdmin() ([]model.Setting, error) {
 	if err := db.DB.Find(&settings).Error; err != nil {
 		return nil, err
 	}
+
+	// 脱敏处理
+	for i := range settings {
+		if settings[i].Sensitive {
+			settings[i].Value = "**********"
+		}
+	}
+
 	return settings, nil
 }
 
@@ -104,6 +112,16 @@ func ListSettingsForAdmin() ([]model.Setting, error) {
 func UpdateSettingsForAdmin(items []UpdateSettingPayload) error {
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
 		for _, item := range items {
+			// 如果值为mask且是敏感字段，则不更新
+			if item.Value == "**********" {
+				var currentSetting model.Setting
+				if err := tx.Where("key = ?", item.Key).First(&currentSetting).Error; err == nil {
+					if currentSetting.Sensitive {
+						continue
+					}
+				}
+			}
+
 			setting := model.Setting{Key: item.Key, Value: item.Value}
 
 			result := tx.Model(&setting).Select("Value").Updates(setting)

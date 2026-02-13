@@ -40,19 +40,19 @@ var DefaultSettings = []model.Setting{
 	{Key: consts.ConfigTrustedProxies, Value: "", Desc: "可信代理列表（逗号分隔，留空表示不信任代理头；修改后需重启服务生效）", Category: "安全"},
 	{Key: consts.ConfigCaptchaProvider, Value: "image", Desc: "验证码提供方（空=关闭, image, turnstile, recaptcha, hcaptcha, geetest）", Category: "验证码"},
 	{Key: consts.ConfigCaptchaTurnstileSiteKey, Value: "", Desc: "Cloudflare Turnstile Site Key", Category: "验证码"},
-	{Key: consts.ConfigCaptchaTurnstileSecretKey, Value: "", Desc: "Cloudflare Turnstile Secret Key", Category: "验证码"},
+	{Key: consts.ConfigCaptchaTurnstileSecretKey, Value: "", Desc: "Cloudflare Turnstile Secret Key", Category: "验证码", Sensitive: true},
 	{Key: consts.ConfigCaptchaTurnstileVerifyURL, Value: "", Desc: "Cloudflare Turnstile 校验地址，留空使用官方默认", Category: "验证码"},
 	{Key: consts.ConfigCaptchaTurnstileExpectedHostname, Value: "", Desc: "Cloudflare Turnstile 期望回传域名（可选）", Category: "验证码"},
 	{Key: consts.ConfigCaptchaRecaptchaSiteKey, Value: "", Desc: "Google reCAPTCHA Site Key", Category: "验证码"},
-	{Key: consts.ConfigCaptchaRecaptchaSecretKey, Value: "", Desc: "Google reCAPTCHA Secret Key", Category: "验证码"},
+	{Key: consts.ConfigCaptchaRecaptchaSecretKey, Value: "", Desc: "Google reCAPTCHA Secret Key", Category: "验证码", Sensitive: true},
 	{Key: consts.ConfigCaptchaRecaptchaVerifyURL, Value: "", Desc: "Google reCAPTCHA 校验地址，留空使用官方默认", Category: "验证码"},
 	{Key: consts.ConfigCaptchaRecaptchaExpectedHostname, Value: "", Desc: "Google reCAPTCHA 期望回传域名（可选）", Category: "验证码"},
 	{Key: consts.ConfigCaptchaHcaptchaSiteKey, Value: "", Desc: "hCaptcha Site Key", Category: "验证码"},
-	{Key: consts.ConfigCaptchaHcaptchaSecretKey, Value: "", Desc: "hCaptcha Secret Key", Category: "验证码"},
+	{Key: consts.ConfigCaptchaHcaptchaSecretKey, Value: "", Desc: "hCaptcha Secret Key", Category: "验证码", Sensitive: true},
 	{Key: consts.ConfigCaptchaHcaptchaVerifyURL, Value: "", Desc: "hCaptcha 校验地址，留空使用官方默认", Category: "验证码"},
 	{Key: consts.ConfigCaptchaHcaptchaExpectedHostname, Value: "", Desc: "hCaptcha 期望回传域名（可选）", Category: "验证码"},
 	{Key: consts.ConfigCaptchaGeetestCaptchaID, Value: "", Desc: "GeeTest Captcha ID", Category: "验证码"},
-	{Key: consts.ConfigCaptchaGeetestCaptchaKey, Value: "", Desc: "GeeTest Captcha Key", Category: "验证码"},
+	{Key: consts.ConfigCaptchaGeetestCaptchaKey, Value: "", Desc: "GeeTest Captcha Key", Category: "验证码", Sensitive: true},
 	{Key: consts.ConfigCaptchaGeetestVerifyURL, Value: "", Desc: "GeeTest 校验地址，留空使用官方默认", Category: "验证码"},
 }
 
@@ -74,8 +74,9 @@ func InitializeSettings() {
 		} else {
 			// 同步更新 Category 和 Desc
 			db.DB.Model(&model.Setting{}).Where("key = ?", def.Key).Updates(map[string]interface{}{
-				"category": def.Category,
-				"desc":     def.Desc,
+				"category":  def.Category,
+				"desc":      def.Desc,
+				"sensitive": def.Sensitive,
 			})
 		}
 	}
