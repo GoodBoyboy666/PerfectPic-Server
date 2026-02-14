@@ -2,7 +2,6 @@ package service
 
 import (
 	"testing"
-	"time"
 
 	"perfect-pic-server/internal/consts"
 	"perfect-pic-server/internal/db"
@@ -139,7 +138,4 @@ func TestRequestEmailChange(t *testing.T) {
 	if err != nil || msg != "" {
 		t.Fatalf("期望 success，实际为 msg=%q err=%v", msg, err)
 	}
-
-	// 避免 goroutine 不稳定，稍等片刻让其调度（默认设置下邮件发送本就禁用）。
-	time.Sleep(1 * time.Millisecond)
 }

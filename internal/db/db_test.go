@@ -22,7 +22,7 @@ func TestInitDB_SQLiteTempFile(t *testing.T) {
 	t.Setenv("PERFECT_PIC_DATABASE_TYPE", "sqlite")
 	t.Setenv("PERFECT_PIC_DATABASE_FILENAME", dbFile)
 
-	config.InitConfig(cfgDir)
+	config.InitConfigWithoutWatch(cfgDir)
 	InitDB()
 
 	if DB == nil {

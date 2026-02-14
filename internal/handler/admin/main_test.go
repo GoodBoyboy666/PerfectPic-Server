@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 	_ = os.Setenv("PERFECT_PIC_JWT_SECRET", "test_secret")
 	_ = os.Setenv("PERFECT_PIC_JWT_EXPIRATION_HOURS", "24")
 	_ = os.Setenv("PERFECT_PIC_REDIS_ENABLED", "false")
-	config.InitConfig(tmpDir)
+	config.InitConfigWithoutWatch(tmpDir)
 
 	code := m.Run()
 

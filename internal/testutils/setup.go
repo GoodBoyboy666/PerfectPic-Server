@@ -34,6 +34,14 @@ func SetupDB(t *testing.T) *gorm.DB {
 	sqlDB.SetMaxOpenConns(1)
 	sqlDB.SetMaxIdleConns(1)
 
+	prevDB := db.DB
+	t.Cleanup(func() {
+		if prevDB != nil && db.DB == gdb {
+			db.DB = prevDB
+		}
+		_ = sqlDB.Close()
+	})
+
 	if err := gdb.AutoMigrate(&model.User{}, &model.Setting{}, &model.Image{}); err != nil {
 		t.Fatalf("automigrate: %v", err)
 	}

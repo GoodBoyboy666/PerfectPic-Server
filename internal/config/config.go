@@ -91,6 +91,28 @@ func GetConfigDir() string {
 }
 
 func InitConfig(customConfigDir string) {
+	v := initViper(customConfigDir)
+	loadAndStore(v)
+	enforceJWTSecretSafety()
+
+	v.WatchConfig()
+	v.OnConfigChange(func(e fsnotify.Event) {
+		log.Println("🔄 检测到配置文件变化:", e.Name)
+		loadAndStore(v)
+	})
+
+	log.Println("✅ 配置加载成功")
+}
+
+// InitConfigWithoutWatch 初始化配置但不启用热重载监听（用于测试场景）。
+func InitConfigWithoutWatch(customConfigDir string) {
+	v := initViper(customConfigDir)
+	loadAndStore(v)
+	enforceJWTSecretSafety()
+	log.Println("✅ 配置加载成功")
+}
+
+func initViper(customConfigDir string) *viper.Viper {
 	v := viper.New()
 
 	customConfigDir = strings.TrimSpace(customConfigDir)
@@ -156,23 +178,7 @@ func InitConfig(customConfigDir string) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// 初始加载配置
-	loadAndStore(v)
-
-	// 首次启动安全检查：如果是 release 模式，拦截不安全的 JWT Secret
-	curr := Get()
-	if curr.Server.Mode == "release" {
-		if curr.JWT.Secret == "" || curr.JWT.Secret == "perfect_pic_secret" {
-			log.Fatal("❌ [安全严重错误] 生产模式(release)下必须设置安全的 JWT Secret！\n请设置环境变量 PERFECT_PIC_JWT_SECRET 或在配置文件中指定 jwt.secret")
-		}
-	}
-
-	v.WatchConfig()
-	v.OnConfigChange(func(e fsnotify.Event) {
-		log.Println("🔄 检测到配置文件变化:", e.Name)
-		loadAndStore(v)
-	})
-
-	log.Println("✅ 配置加载成功")
+	return v
 }
 
 // loadAndStore 解析并原子更新配置
@@ -203,4 +209,14 @@ func loadAndStore(v *viper.Viper) {
 	// 原子替换全局配置
 	appConfig.Store(&tempConfig)
 	log.Println("✅ 配置已更新")
+}
+
+func enforceJWTSecretSafety() {
+	// 首次启动安全检查：如果是 release 模式，拦截不安全的 JWT Secret
+	curr := Get()
+	if curr.Server.Mode == "release" {
+		if curr.JWT.Secret == "" || curr.JWT.Secret == "perfect_pic_secret" {
+			log.Fatal("❌ [安全严重错误] 生产模式(release)下必须设置安全的 JWT Secret！\n请设置环境变量 PERFECT_PIC_JWT_SECRET 或在配置文件中指定 jwt.secret")
+		}
+	}
 }

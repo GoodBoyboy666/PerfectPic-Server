@@ -149,9 +149,11 @@ func RegisterUser(username, password, email string) error {
 	}
 
 	verifyURL := fmt.Sprintf("%s/auth/email-verify?token=%s", baseURL, verifyToken)
-	go func() {
-		_ = SendVerificationEmail(newUser.Email, newUser.Username, verifyURL)
-	}()
+	if shouldSendEmail() {
+		go func() {
+			_ = SendVerificationEmail(newUser.Email, newUser.Username, verifyURL)
+		}()
+	}
 
 	return nil
 }
@@ -261,9 +263,11 @@ func RequestPasswordReset(email string) error {
 	}
 	resetURL := fmt.Sprintf("%s/auth/reset-password?token=%s", baseURL, token)
 
-	go func() {
-		_ = SendPasswordResetEmail(user.Email, user.Username, resetURL)
-	}()
+	if shouldSendEmail() {
+		go func() {
+			_ = SendPasswordResetEmail(user.Email, user.Username, resetURL)
+		}()
+	}
 
 	return nil
 }

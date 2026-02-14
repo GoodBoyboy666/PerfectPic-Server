@@ -136,9 +136,11 @@ func RequestEmailChange(userID uint, password, newEmail string) (string, error) 
 	}
 	verifyURL := fmt.Sprintf("%s/auth/email-change-verify?token=%s", baseURL, token)
 
-	go func() {
-		_ = SendEmailChangeVerification(newEmail, user.Username, user.Email, newEmail, verifyURL)
-	}()
+	if shouldSendEmail() {
+		go func() {
+			_ = SendEmailChangeVerification(newEmail, user.Username, user.Email, newEmail, verifyURL)
+		}()
+	}
 
 	return "", nil
 }

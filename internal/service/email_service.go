@@ -45,6 +45,14 @@ type PasswordResetData struct {
 
 var strictEmailRegex = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z0-9]+`)
 
+func shouldSendEmail() bool {
+	if !GetBool(consts.ConfigEnableSMTP) {
+		return false
+	}
+	cfg := config.Get()
+	return strings.TrimSpace(cfg.SMTP.Host) != ""
+}
+
 // SendVerificationEmail 发送验证邮件
 func SendVerificationEmail(toEmail, username, verifyUrl string) error {
 	// 检查是否开启 SMTP

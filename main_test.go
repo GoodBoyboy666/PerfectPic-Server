@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -19,6 +20,29 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// 测试内容：为 main 包测试初始化配置环境并在结束时清理。
+func TestMain(m *testing.M) {
+	tmpDir, err := os.MkdirTemp("", "perfect-pic-main-config-*")
+	if err != nil {
+		panic(err)
+	}
+
+	_ = os.Setenv("PERFECT_PIC_SERVER_MODE", "debug")
+	_ = os.Setenv("PERFECT_PIC_JWT_SECRET", "test_secret")
+	_ = os.Setenv("PERFECT_PIC_JWT_EXPIRATION_HOURS", "24")
+	_ = os.Setenv("PERFECT_PIC_UPLOAD_PATH", "uploads/imgs")
+	_ = os.Setenv("PERFECT_PIC_UPLOAD_AVATAR_PATH", "uploads/avatars")
+	_ = os.Setenv("PERFECT_PIC_UPLOAD_URL_PREFIX", "/imgs/")
+	_ = os.Setenv("PERFECT_PIC_UPLOAD_AVATAR_URL_PREFIX", "/avatars/")
+	_ = os.Setenv("PERFECT_PIC_REDIS_ENABLED", "false")
+	config.InitConfigWithoutWatch(tmpDir)
+
+	code := m.Run()
+
+	_ = os.RemoveAll(tmpDir)
+	os.Exit(code)
+}
 
 // 测试内容：验证 splitTrustedProxyList 能正确拆分代理列表。
 func TestSplitTrustedProxyList(t *testing.T) {
@@ -69,7 +93,6 @@ func TestExportAPI_WritesRoutesJSON(t *testing.T) {
 // 测试内容：验证 NoRoute 处理在 API/上传/头像路径返回 404，根路径回退到 index，静态文件可被服务。
 func TestGetNoRouteHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	initTestConfig(t)
 
 	dist := fstest.MapFS{
 		"favicon.ico": &fstest.MapFile{Data: []byte("ico")},
@@ -117,8 +140,6 @@ func TestGetNoRouteHandler(t *testing.T) {
 
 // 测试内容：确保创建上传与头像目录。
 func TestEnsureDirectories_CreatesUploadAndAvatarDirs(t *testing.T) {
-	initTestConfig(t)
-
 	tmp := t.TempDir()
 	oldwd, _ := os.Getwd()
 	_ = os.Chdir(tmp)
@@ -136,32 +157,62 @@ func TestEnsureDirectories_CreatesUploadAndAvatarDirs(t *testing.T) {
 // 测试内容：验证 trusted_proxies 设置对信任代理的影响：空值禁用、有效列表生效、无效列表回退。
 func TestApplyTrustedProxies_UsesSettingValue(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	initTestConfig(t)
 	setupTestDBForMain(t)
 
-	// 空值会禁用信任。
-	_ = db.DB.Save(&model.Setting{Key: "trusted_proxies", Value: ""}).Error
+	getClientIP := func(r *gin.Engine, remoteAddr, xff string) string {
+		r.GET("/ip", func(c *gin.Context) {
+			c.String(http.StatusOK, c.ClientIP())
+		})
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/ip", nil)
+		req.RemoteAddr = remoteAddr
+		if xff != "" {
+			req.Header.Set("X-Forwarded-For", xff)
+		}
+		r.ServeHTTP(w, req)
+		return strings.TrimSpace(w.Body.String())
+	}
+
+	remoteAddr := "10.0.0.1:1234"
+	xff := "203.0.113.10, 10.0.0.1"
+
+	// 空值会禁用信任，ClientIP 应为 RemoteAddr。
+	if err := db.DB.Save(&model.Setting{Key: "trusted_proxies", Value: ""}).Error; err != nil {
+		t.Fatalf("保存 trusted_proxies 失败: %v", err)
+	}
 	service.ClearCache()
 	r := gin.New()
 	applyTrustedProxies(r)
+	if got := getClientIP(r, remoteAddr, xff); got != "10.0.0.1" {
+		t.Fatalf("禁用可信代理时 ClientIP 应为 RemoteAddr，实际为 %q", got)
+	}
 
-	// 有效的代理列表。
-	_ = db.DB.Save(&model.Setting{Key: "trusted_proxies", Value: "127.0.0.1,10.0.0.0/8"}).Error
+	// 有效的代理列表应启用信任，ClientIP 应取 X-Forwarded-For。
+	if err := db.DB.Save(&model.Setting{Key: "trusted_proxies", Value: "127.0.0.1,10.0.0.0/8"}).Error; err != nil {
+		t.Fatalf("保存 trusted_proxies 失败: %v", err)
+	}
 	service.ClearCache()
 	r2 := gin.New()
 	applyTrustedProxies(r2)
+	if got := getClientIP(r2, remoteAddr, xff); got != "203.0.113.10" {
+		t.Fatalf("启用可信代理时 ClientIP 应取 X-Forwarded-For，实际为 %q", got)
+	}
 
-	// 无效的代理列表应回退为 nil。
-	_ = db.DB.Save(&model.Setting{Key: "trusted_proxies", Value: "not-a-cidr"}).Error
+	// 无效的代理列表应回退为禁用，ClientIP 仍为 RemoteAddr。
+	if err := db.DB.Save(&model.Setting{Key: "trusted_proxies", Value: "not-a-cidr"}).Error; err != nil {
+		t.Fatalf("保存 trusted_proxies 失败: %v", err)
+	}
 	service.ClearCache()
 	r3 := gin.New()
 	applyTrustedProxies(r3)
+	if got := getClientIP(r3, remoteAddr, xff); got != "10.0.0.1" {
+		t.Fatalf("无效可信代理时 ClientIP 应为 RemoteAddr，实际为 %q", got)
+	}
 }
 
 // 测试内容：验证 dist 为空时 NoRoute 对任意路径返回 404。
 func TestGetNoRouteHandler_DistFSNil(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	initTestConfig(t)
 
 	r := gin.New()
 	r.NoRoute(getNoRouteHandler(nil, nil))
@@ -175,14 +226,13 @@ func TestGetNoRouteHandler_DistFSNil(t *testing.T) {
 
 // 测试内容：验证欢迎信息打印函数在测试配置下可执行。
 func TestPrintWelcomeMessage(t *testing.T) {
-	initTestConfig(t)
 	printWelcomeMessage()
 }
 
 // 测试内容：验证静态文件挂载后上传与头像文件可被访问。
 func TestSetupStaticFiles_ServesUploadsAndAvatars(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	initTestConfig(t)
+	setupTestDBForMain(t)
 
 	tmp := t.TempDir()
 	oldwd, _ := os.Getwd()
@@ -207,21 +257,6 @@ func TestSetupStaticFiles_ServesUploadsAndAvatars(t *testing.T) {
 	if w2.Code != http.StatusOK {
 		t.Fatalf("期望 200，实际为 %d", w2.Code)
 	}
-}
-
-func initTestConfig(t *testing.T) {
-	t.Helper()
-
-	cfgDir := t.TempDir()
-	t.Setenv("PERFECT_PIC_SERVER_MODE", "debug")
-	t.Setenv("PERFECT_PIC_JWT_SECRET", "test_secret")
-	t.Setenv("PERFECT_PIC_JWT_EXPIRATION_HOURS", "24")
-	t.Setenv("PERFECT_PIC_UPLOAD_PATH", "uploads/imgs")
-	t.Setenv("PERFECT_PIC_UPLOAD_AVATAR_PATH", "uploads/avatars")
-	t.Setenv("PERFECT_PIC_UPLOAD_URL_PREFIX", "/imgs/")
-	t.Setenv("PERFECT_PIC_UPLOAD_AVATAR_URL_PREFIX", "/avatars/")
-	t.Setenv("PERFECT_PIC_REDIS_ENABLED", "false")
-	config.InitConfig(cfgDir)
 }
 
 func setupTestDBForMain(t *testing.T) *gorm.DB {
