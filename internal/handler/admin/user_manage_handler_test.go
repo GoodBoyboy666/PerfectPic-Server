@@ -11,6 +11,7 @@ import (
 
 	"perfect-pic-server/internal/db"
 	"perfect-pic-server/internal/model"
+	"perfect-pic-server/internal/testutils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -71,7 +72,7 @@ func TestUserManageHandlers_CRUD(t *testing.T) {
 	var mp bytes.Buffer
 	mw := multipart.NewWriter(&mp)
 	part, _ := mw.CreateFormFile("file", "a.png")
-	_, _ = part.Write(minimalPNG())
+	_, _ = part.Write(testutils.MinimalPNG())
 	_ = mw.Close()
 	reqAvatar := httptest.NewRequest(http.MethodPost, "/users/1/avatar", &mp)
 	reqAvatar.Header.Set("Content-Type", mw.FormDataContentType())
@@ -162,16 +163,5 @@ func TestUserManageHandlers_ErrorBranches(t *testing.T) {
 	r.ServeHTTP(w8, httptest.NewRequest(http.MethodDelete, "/users/999/avatar", nil))
 	if w8.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", w8.Code)
-	}
-}
-
-func minimalPNG() []byte {
-	return []byte{
-		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-		0x00, 0x00, 0x00, 0x0D,
-		0x49, 0x48, 0x44, 0x52,
-		0x00, 0x00, 0x00, 0x01,
-		0x00, 0x00, 0x00, 0x01,
-		0x08, 0x02, 0x00, 0x00, 0x00,
 	}
 }

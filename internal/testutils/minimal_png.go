@@ -1,0 +1,18 @@
+package testutils
+
+// MinimalPNG returns a small PNG-like byte slice suitable for tests that only
+// need content-type sniffing or basic extension validation.
+//
+// It is intentionally minimal and may not represent a fully valid PNG file.
+func MinimalPNG() []byte {
+	// PNG signature + partial IHDR chunk (1x1, 8-bit RGB).
+	b := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D,
+		0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01,
+		0x00, 0x00, 0x00, 0x01,
+		0x08, 0x02, 0x00, 0x00, 0x00,
+	}
+	return append([]byte(nil), b...)
+}

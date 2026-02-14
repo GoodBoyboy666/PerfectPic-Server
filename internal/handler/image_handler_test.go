@@ -8,10 +8,12 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"perfect-pic-server/internal/db"
 	"perfect-pic-server/internal/model"
+	"perfect-pic-server/internal/testutils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -37,7 +39,7 @@ func TestUploadAndListAndDeleteImagesHandlers(t *testing.T) {
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
 	part, _ := w.CreateFormFile("file", "a.png")
-	_, _ = part.Write(minimalPNG())
+	_, _ = part.Write(testutils.MinimalPNG())
 	_ = w.Close()
 
 	req := httptest.NewRequest(http.MethodPost, "/upload", &body)
@@ -76,7 +78,7 @@ func TestUploadAndListAndDeleteImagesHandlers(t *testing.T) {
 
 	// Delete image.
 	rec3 := httptest.NewRecorder()
-	r.ServeHTTP(rec3, httptest.NewRequest(http.MethodDelete, "/images/"+intToDec(uint(uploadResp.ID)), nil))
+	r.ServeHTTP(rec3, httptest.NewRequest(http.MethodDelete, "/images/"+strconv.FormatUint(uint64(uploadResp.ID), 10), nil))
 	if rec3.Code != http.StatusOK {
 		t.Fatalf("delete expected 200, got %d body=%s", rec3.Code, rec3.Body.String())
 	}
@@ -105,7 +107,7 @@ func TestBatchDeleteMyImagesHandler(t *testing.T) {
 		var body bytes.Buffer
 		w := multipart.NewWriter(&body)
 		part, _ := w.CreateFormFile("file", "a.png")
-		_, _ = part.Write(minimalPNG())
+		_, _ = part.Write(testutils.MinimalPNG())
 		_ = w.Close()
 		req := httptest.NewRequest(http.MethodPost, "/upload", &body)
 		req.Header.Set("Content-Type", w.FormDataContentType())
@@ -188,7 +190,7 @@ func TestUploadImageHandler_QuotaExceededReturns403(t *testing.T) {
 	r := gin.New()
 	r.POST("/upload", func(c *gin.Context) { c.Set("id", u.ID); c.Next() }, UploadImage)
 
-	req := newUploadRequest(t, "/upload", "a.png", minimalPNG())
+	req := newUploadRequest(t, "/upload", "a.png", testutils.MinimalPNG())
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusForbidden {
@@ -206,7 +208,7 @@ func TestUploadImageHandler_UnsupportedExtReturns400(t *testing.T) {
 	r := gin.New()
 	r.POST("/upload", func(c *gin.Context) { c.Set("id", u.ID); c.Next() }, UploadImage)
 
-	req := newUploadRequest(t, "/upload", "a.exe", minimalPNG())
+	req := newUploadRequest(t, "/upload", "a.exe", testutils.MinimalPNG())
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {

@@ -3,10 +3,12 @@ package service
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"perfect-pic-server/internal/db"
 	"perfect-pic-server/internal/model"
+	"perfect-pic-server/internal/testutils"
 )
 
 func TestDeleteImage_RemovesFileAndUpdatesStorage(t *testing.T) {
@@ -99,11 +101,11 @@ func TestUpdateAndRemoveUserAvatar(t *testing.T) {
 	_ = db.DB.Create(&u).Error
 
 	// Create old avatar file
-	oldPath := filepath.Join("uploads", "avatars", uintToDec(u.ID), "old.png")
+	oldPath := filepath.Join("uploads", "avatars", strconv.FormatUint(uint64(u.ID), 10), "old.png")
 	_ = os.MkdirAll(filepath.Dir(oldPath), 0755)
 	_ = os.WriteFile(oldPath, []byte("x"), 0644)
 
-	fh := mustFileHeader(t, "a.png", minimalPNG())
+	fh := mustFileHeader(t, "a.png", testutils.MinimalPNG())
 	newName, err := UpdateUserAvatar(&u, fh)
 	if err != nil {
 		t.Fatalf("UpdateUserAvatar: %v", err)
@@ -121,7 +123,7 @@ func TestUpdateAndRemoveUserAvatar(t *testing.T) {
 		t.Fatalf("expected avatar set in db")
 	}
 
-	avatarPath := filepath.Join("uploads", "avatars", uintToDec(u.ID), got.Avatar)
+	avatarPath := filepath.Join("uploads", "avatars", strconv.FormatUint(uint64(u.ID), 10), got.Avatar)
 	if _, err := os.Stat(avatarPath); err != nil {
 		t.Fatalf("expected new avatar file exists: %v", err)
 	}
@@ -137,18 +139,4 @@ func TestUpdateAndRemoveUserAvatar(t *testing.T) {
 	if _, err := os.Stat(avatarPath); !os.IsNotExist(err) {
 		t.Fatalf("expected avatar file removed, err=%v", err)
 	}
-}
-
-func uintToDec(v uint) string {
-	s := ""
-	x := v
-	if x == 0 {
-		return "0"
-	}
-	for x > 0 {
-		d := x % 10
-		s = string('0'+byte(d)) + s
-		x /= 10
-	}
-	return s
 }

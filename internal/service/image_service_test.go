@@ -11,12 +11,13 @@ import (
 
 	"perfect-pic-server/internal/db"
 	"perfect-pic-server/internal/model"
+	"perfect-pic-server/internal/testutils"
 )
 
 func TestValidateImageFile_OK(t *testing.T) {
 	setupTestDB(t)
 
-	fh := mustFileHeader(t, "a.png", minimalPNG())
+	fh := mustFileHeader(t, "a.png", testutils.MinimalPNG())
 	ok, ext, err := ValidateImageFile(fh)
 	if !ok || err != nil {
 		t.Fatalf("expected ok, got ok=%v ext=%q err=%v", ok, ext, err)
@@ -29,7 +30,7 @@ func TestValidateImageFile_OK(t *testing.T) {
 func TestValidateImageFile_RejectsUnsupportedExt(t *testing.T) {
 	setupTestDB(t)
 
-	fh := mustFileHeader(t, "a.exe", minimalPNG())
+	fh := mustFileHeader(t, "a.exe", testutils.MinimalPNG())
 	ok, ext, err := ValidateImageFile(fh)
 	if ok || err == nil {
 		t.Fatalf("expected failure, got ok=%v ext=%q err=%v", ok, ext, err)
@@ -59,7 +60,7 @@ func TestProcessImageUpload_SavesFileAndCreatesRecord(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 
-	fh := mustFileHeader(t, "a.png", minimalPNG())
+	fh := mustFileHeader(t, "a.png", testutils.MinimalPNG())
 	img, url, err := ProcessImageUpload(fh, u.ID)
 	if err != nil {
 		t.Fatalf("ProcessImageUpload error: %v", err)
@@ -111,7 +112,7 @@ func TestProcessImageUpload_QuotaExceeded(t *testing.T) {
 	}
 	_ = db.DB.Create(&u).Error
 
-	fh := mustFileHeader(t, "a.png", minimalPNG())
+	fh := mustFileHeader(t, "a.png", testutils.MinimalPNG())
 	_, _, err := ProcessImageUpload(fh, u.ID)
 	if err == nil || !strings.Contains(err.Error(), "存储空间不足") {
 		t.Fatalf("expected quota error, got: %v", err)
@@ -145,15 +146,4 @@ func mustFileHeader(t *testing.T, filename string, content []byte) *multipart.Fi
 		t.Fatalf("expected 1 file header, got %d", len(fhs))
 	}
 	return fhs[0]
-}
-
-func minimalPNG() []byte {
-	return []byte{
-		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-		0x00, 0x00, 0x00, 0x0D,
-		0x49, 0x48, 0x44, 0x52,
-		0x00, 0x00, 0x00, 0x01,
-		0x00, 0x00, 0x00, 0x01,
-		0x08, 0x02, 0x00, 0x00, 0x00,
-	}
 }

@@ -8,10 +8,12 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"perfect-pic-server/internal/db"
 	"perfect-pic-server/internal/model"
+	"perfect-pic-server/internal/testutils"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -102,7 +104,7 @@ func TestUpdateSelfAvatar_OK(t *testing.T) {
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
 	part, _ := w.CreateFormFile("file", "a.png")
-	_, _ = part.Write(minimalPNG())
+	_, _ = part.Write(testutils.MinimalPNG())
 	_ = w.Close()
 
 	r := gin.New()
@@ -117,7 +119,7 @@ func TestUpdateSelfAvatar_OK(t *testing.T) {
 	}
 
 	// Ensure file was created somewhere under uploads/avatars/{uid}
-	userDir := filepath.Join("uploads", "avatars", intToDec(u.ID))
+	userDir := filepath.Join("uploads", "avatars", strconv.FormatUint(uint64(u.ID), 10))
 	entries, err := os.ReadDir(userDir)
 	if err != nil || len(entries) == 0 {
 		t.Fatalf("expected avatar file created in %q: err=%v entries=%d", userDir, err, len(entries))
@@ -158,31 +160,5 @@ func TestGetSelfImagesCountHandler_OK(t *testing.T) {
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/count", nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", w.Code, w.Body.String())
-	}
-}
-
-func intToDec(v uint) string {
-	// Avoid extra imports in this test file.
-	s := ""
-	x := v
-	if x == 0 {
-		return "0"
-	}
-	for x > 0 {
-		d := x % 10
-		s = string('0'+byte(d)) + s
-		x /= 10
-	}
-	return s
-}
-
-func minimalPNG() []byte {
-	return []byte{
-		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-		0x00, 0x00, 0x00, 0x0D,
-		0x49, 0x48, 0x44, 0x52,
-		0x00, 0x00, 0x00, 0x01,
-		0x00, 0x00, 0x00, 0x01,
-		0x08, 0x02, 0x00, 0x00, 0x00,
 	}
 }

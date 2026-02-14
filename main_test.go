@@ -7,18 +7,16 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"testing/fstest"
-	"time"
 
 	"perfect-pic-server/internal/config"
 	"perfect-pic-server/internal/db"
 	"perfect-pic-server/internal/model"
 	"perfect-pic-server/internal/service"
+	"perfect-pic-server/internal/testutils"
 
 	"github.com/gin-gonic/gin"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -218,17 +216,7 @@ func initTestConfig(t *testing.T) {
 }
 
 func setupTestDBForMain(t *testing.T) *gorm.DB {
-	t.Helper()
-
-	dsn := "file:ppmain_" + strconv.FormatInt(time.Now().UnixNano(), 10) + "?mode=memory&cache=shared"
-	gdb, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	if err := gdb.AutoMigrate(&model.User{}, &model.Setting{}, &model.Image{}); err != nil {
-		t.Fatalf("automigrate: %v", err)
-	}
-	db.DB = gdb
+	gdb := testutils.SetupDB(t)
 	service.ClearCache()
 	return gdb
 }

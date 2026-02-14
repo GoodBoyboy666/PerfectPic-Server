@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strconv"
 	"testing"
 
 	"perfect-pic-server/internal/db"
@@ -95,7 +96,7 @@ func TestGetUserImageCountAndBatchGetters(t *testing.T) {
 		t.Fatalf("GetImagesByIDsForUser: err=%v len=%d", err, len(images))
 	}
 
-	got, err := GetImageByIDForAdmin(intToString(img1.ID))
+	got, err := GetImageByIDForAdmin(strconv.FormatUint(uint64(img1.ID), 10))
 	if err != nil {
 		t.Fatalf("GetImageByIDForAdmin: %v", err)
 	}
@@ -107,21 +108,6 @@ func TestGetUserImageCountAndBatchGetters(t *testing.T) {
 	if err != nil || len(images2) != 2 {
 		t.Fatalf("GetImagesByIDsForAdmin: err=%v len=%d", err, len(images2))
 	}
-}
-
-func intToString(v uint) string {
-	// local helper to avoid importing strconv in this file
-	s := ""
-	x := v
-	if x == 0 {
-		return "0"
-	}
-	for x > 0 {
-		d := x % 10
-		s = string('0'+byte(d)) + s
-		x /= 10
-	}
-	return s
 }
 
 func TestListImagesForAdmin_FiltersByUsername(t *testing.T) {
