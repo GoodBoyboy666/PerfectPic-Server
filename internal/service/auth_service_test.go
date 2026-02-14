@@ -194,7 +194,7 @@ func TestRegisterUser_SuccessCreatesUser(t *testing.T) {
 func TestAuthError_ErrorString(t *testing.T) {
 	e := &AuthError{Code: AuthErrorUnauthorized, Message: "x"}
 	if e.Error() != "x" {
-		t.Fatalf("un期望返回错误 string: %q", e.Error())
+		t.Fatalf("期望返回错误 string: %q", e.Error())
 	}
 }
 
