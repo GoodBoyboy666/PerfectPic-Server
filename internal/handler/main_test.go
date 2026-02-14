@@ -7,6 +7,7 @@ import (
 	"perfect-pic-server/internal/config"
 )
 
+// 测试内容：为 handler 包测试初始化配置环境并在结束时清理。
 func TestMain(m *testing.M) {
 	tmpDir, err := os.MkdirTemp("", "perfect-pic-handler-config-*")
 	if err != nil {

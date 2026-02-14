@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 测试内容：验证禁用验证码提供方时返回 disabled。
 func TestGetCaptcha_DisabledProvider(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -27,20 +28,21 @@ func TestGetCaptcha_DisabledProvider(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/captcha", nil))
 	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
+		t.Fatalf("期望 200，实际为 %d", w.Code)
 	}
 
 	var resp struct {
 		Provider string `json:"provider"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("decode: %v", err)
+		t.Fatalf("解析失败: %v", err)
 	}
 	if resp.Provider != service.CaptchaProviderDisabled {
-		t.Fatalf("expected disabled provider, got %q", resp.Provider)
+		t.Fatalf("期望 disabled provider，实际为 %q", resp.Provider)
 	}
 }
 
+// 测试内容：验证不同提供方返回包含公共配置的响应。
 func TestGetCaptcha_ProvidersWithPublicConfig(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -66,11 +68,12 @@ func TestGetCaptcha_ProvidersWithPublicConfig(t *testing.T) {
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/captcha", nil))
 		if w.Code != http.StatusOK {
-			t.Fatalf("provider %s expected 200, got %d body=%s", tc.provider, w.Code, w.Body.String())
+			t.Fatalf("provider %s 期望 200，实际为 %d body=%s", tc.provider, w.Code, w.Body.String())
 		}
 	}
 }
 
+// 测试内容：验证图片验证码提供方可返回验证码 ID 与图片。
 func TestGetCaptchaImage_ImageProvider(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -84,7 +87,7 @@ func TestGetCaptchaImage_ImageProvider(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/captcha/image", nil))
 	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
+		t.Fatalf("期望 200，实际为 %d", w.Code)
 	}
 
 	var resp struct {
@@ -92,13 +95,14 @@ func TestGetCaptchaImage_ImageProvider(t *testing.T) {
 		Image string `json:"captcha_image"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("decode: %v", err)
+		t.Fatalf("解析失败: %v", err)
 	}
 	if resp.ID == "" || resp.Image == "" {
-		t.Fatalf("expected captcha_id and captcha_image to be non-empty")
+		t.Fatalf("期望 captcha_id and captcha_image to be non-empty")
 	}
 }
 
+// 测试内容：验证非图片提供方请求验证码图片时返回 400。
 func TestGetCaptchaImage_NonImageProviderReturns400(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -112,6 +116,6 @@ func TestGetCaptchaImage_NonImageProviderReturns400(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/captcha/image", nil))
 	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d body=%s", w.Code, w.Body.String())
+		t.Fatalf("期望 400，实际为 %d body=%s", w.Code, w.Body.String())
 	}
 }

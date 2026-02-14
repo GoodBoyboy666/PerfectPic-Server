@@ -41,4 +41,3 @@ func SetupDB(t *testing.T) *gorm.DB {
 	db.DB = gdb
 	return gdb
 }
-

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 测试内容：验证核心 API 路由被正确注册。
 func TestInitRouter_RegistersCoreRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -31,7 +32,7 @@ func TestInitRouter_RegistersCoreRoutes(t *testing.T) {
 
 	for _, w := range wants {
 		if !have[w.method+" "+w.path] {
-			t.Fatalf("missing route: %s %s", w.method, w.path)
+			t.Fatalf("缺少路由: %s %s", w.method, w.path)
 		}
 	}
 }

@@ -13,12 +13,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 测试内容：验证限流关闭时请求不会被拦截。
 func TestRateLimitMiddleware_DisabledAllowsRequests(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
 
 	if err := db.DB.Save(&model.Setting{Key: consts.ConfigRateLimitEnabled, Value: "false"}).Error; err != nil {
-		t.Fatalf("set setting: %v", err)
+		t.Fatalf("设置配置项失败: %v", err)
 	}
 	service.ClearCache()
 
@@ -31,7 +32,7 @@ func TestRateLimitMiddleware_DisabledAllowsRequests(t *testing.T) {
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, req1)
 	if w1.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w1.Code)
+		t.Fatalf("期望 200，实际为 %d", w1.Code)
 	}
 
 	req2 := httptest.NewRequest(http.MethodGet, "/x", nil)
@@ -39,15 +40,16 @@ func TestRateLimitMiddleware_DisabledAllowsRequests(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	r.ServeHTTP(w2, req2)
 	if w2.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w2.Code)
+		t.Fatalf("期望 200，实际为 %d", w2.Code)
 	}
 }
 
+// 测试内容：验证限流开启且无补充时会阻止突发请求。
 func TestRateLimitMiddleware_EnabledBlocksBurst(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
 
-	// Enable limiter with 1 token burst and no refill (rps=0).
+	// 启用限流器：突发 1 个令牌且不补充（rps=0）。
 	_ = db.DB.Save(&model.Setting{Key: consts.ConfigRateLimitEnabled, Value: "true"}).Error
 	_ = db.DB.Save(&model.Setting{Key: consts.ConfigRateLimitAuthRPS, Value: "0"}).Error
 	_ = db.DB.Save(&model.Setting{Key: consts.ConfigRateLimitAuthBurst, Value: "1"}).Error
@@ -62,7 +64,7 @@ func TestRateLimitMiddleware_EnabledBlocksBurst(t *testing.T) {
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, req1)
 	if w1.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w1.Code)
+		t.Fatalf("期望 200，实际为 %d", w1.Code)
 	}
 
 	req2 := httptest.NewRequest(http.MethodGet, "/x", nil)
@@ -70,6 +72,6 @@ func TestRateLimitMiddleware_EnabledBlocksBurst(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	r.ServeHTTP(w2, req2)
 	if w2.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected 429, got %d", w2.Code)
+		t.Fatalf("期望 429，实际为 %d", w2.Code)
 	}
 }

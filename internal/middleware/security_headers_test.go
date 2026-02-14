@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 测试内容：验证安全相关响应头会被正确设置。
 func TestSecurityHeaders_SetsHeaders(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -19,12 +20,12 @@ func TestSecurityHeaders_SetsHeaders(t *testing.T) {
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/x", nil))
 
 	if got := w.Header().Get("X-Content-Type-Options"); got != "nosniff" {
-		t.Fatalf("X-Content-Type-Options = %q", got)
+		t.Fatalf("X-Content-Type-Options 值为 %q", got)
 	}
 	if got := w.Header().Get("X-Frame-Options"); got != "DENY" {
-		t.Fatalf("X-Frame-Options = %q", got)
+		t.Fatalf("X-Frame-Options 值为 %q", got)
 	}
 	if got := w.Header().Get("Content-Security-Policy"); got == "" {
-		t.Fatalf("expected CSP header to be set")
+		t.Fatalf("期望 CSP header to be set")
 	}
 }

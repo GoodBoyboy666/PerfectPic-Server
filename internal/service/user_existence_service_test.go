@@ -7,12 +7,13 @@ import (
 	"perfect-pic-server/internal/model"
 )
 
+// 测试内容：验证用户名占用检测在是否包含已删除用户时的差异。
 func TestIsUsernameTaken_IncludeDeleted(t *testing.T) {
 	setupTestDB(t)
 
 	u := model.User{Username: "alice", Password: "x", Status: 1, Email: "a@example.com"}
 	if err := db.DB.Create(&u).Error; err != nil {
-		t.Fatalf("create user: %v", err)
+		t.Fatalf("创建用户失败: %v", err)
 	}
 	if err := db.DB.Delete(&u).Error; err != nil {
 		t.Fatalf("soft delete user: %v", err)
@@ -23,7 +24,7 @@ func TestIsUsernameTaken_IncludeDeleted(t *testing.T) {
 		t.Fatalf("IsUsernameTaken: %v", err)
 	}
 	if taken {
-		t.Fatalf("expected username not taken when exclude deleted")
+		t.Fatalf("期望 username not taken when exclude deleted")
 	}
 
 	taken2, err := IsUsernameTaken("alice", nil, true)
@@ -31,10 +32,11 @@ func TestIsUsernameTaken_IncludeDeleted(t *testing.T) {
 		t.Fatalf("IsUsernameTaken(includeDeleted): %v", err)
 	}
 	if !taken2 {
-		t.Fatalf("expected username taken when include deleted")
+		t.Fatalf("期望 username taken when include deleted")
 	}
 }
 
+// 测试内容：验证邮箱占用检测支持排除指定用户 ID。
 func TestIsEmailTaken_ExcludeUserID(t *testing.T) {
 	setupTestDB(t)
 
@@ -49,6 +51,6 @@ func TestIsEmailTaken_ExcludeUserID(t *testing.T) {
 		t.Fatalf("IsEmailTaken: %v", err)
 	}
 	if taken {
-		t.Fatalf("expected email not taken when excluding matching user")
+		t.Fatalf("期望 email not taken when excluding matching user")
 	}
 }

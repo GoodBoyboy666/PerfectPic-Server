@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 测试内容：验证管理员图片列表、单删与批删接口及文件清理行为。
 func TestImageManageHandlers_ListAndDelete(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -27,7 +28,7 @@ func TestImageManageHandlers_ListAndDelete(t *testing.T) {
 	u := model.User{Username: "alice", Password: "x", Status: 1, Email: "a@example.com"}
 	_ = db.DB.Create(&u).Error
 
-	// Create physical image file + record.
+	// 创建图片物理文件和记录。
 	imgRel := "2026/02/13/a.png"
 	imgFile := filepath.Join("uploads", "imgs", filepath.FromSlash(imgRel))
 	_ = os.MkdirAll(filepath.Dir(imgFile), 0755)
@@ -41,24 +42,24 @@ func TestImageManageHandlers_ListAndDelete(t *testing.T) {
 	r.DELETE("/images/:id", DeleteImage)
 	r.DELETE("/images/batch", BatchDeleteImages)
 
-	// List
+	// 列表
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, httptest.NewRequest(http.MethodGet, "/images?page=1&page_size=10&username=ali", nil))
 	if w1.Code != http.StatusOK {
-		t.Fatalf("list expected 200, got %d body=%s", w1.Code, w1.Body.String())
+		t.Fatalf("list 期望 200，实际为 %d body=%s", w1.Code, w1.Body.String())
 	}
 
-	// Delete single
+	// 删除单个
 	w2 := httptest.NewRecorder()
 	r.ServeHTTP(w2, httptest.NewRequest(http.MethodDelete, "/images/1", nil))
 	if w2.Code != http.StatusOK {
-		t.Fatalf("delete expected 200, got %d body=%s", w2.Code, w2.Body.String())
+		t.Fatalf("delete 期望 200，实际为 %d body=%s", w2.Code, w2.Body.String())
 	}
 	if _, err := os.Stat(imgFile); !os.IsNotExist(err) {
-		t.Fatalf("expected file removed, err=%v", err)
+		t.Fatalf("期望 file removed, err=%v", err)
 	}
 
-	// Recreate two images for batch delete
+	// 为批量删除重新创建两张图片
 	imgFile1 := filepath.Join("uploads", "imgs", "2026", "02", "13", "b.png")
 	imgFile2 := filepath.Join("uploads", "imgs", "2026", "02", "13", "c.png")
 	_ = os.WriteFile(imgFile1, []byte{0x89, 0x50, 0x4E, 0x47}, 0644)
@@ -72,16 +73,17 @@ func TestImageManageHandlers_ListAndDelete(t *testing.T) {
 	w3 := httptest.NewRecorder()
 	r.ServeHTTP(w3, httptest.NewRequest(http.MethodDelete, "/images/batch", bytes.NewReader(body)))
 	if w3.Code != http.StatusOK {
-		t.Fatalf("batch delete expected 200, got %d body=%s", w3.Code, w3.Body.String())
+		t.Fatalf("batch delete 期望 200，实际为 %d body=%s", w3.Code, w3.Body.String())
 	}
 	if _, err := os.Stat(imgFile1); !os.IsNotExist(err) {
-		t.Fatalf("expected file1 removed, err=%v", err)
+		t.Fatalf("期望 file1 removed, err=%v", err)
 	}
 	if _, err := os.Stat(imgFile2); !os.IsNotExist(err) {
-		t.Fatalf("expected file2 removed, err=%v", err)
+		t.Fatalf("期望 file2 removed, err=%v", err)
 	}
 }
 
+// 测试内容：验证管理员批量删除接口的绑定错误、空列表、超限与未找到分支。
 func TestBatchDeleteImagesHandler_Errors(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -89,22 +91,22 @@ func TestBatchDeleteImagesHandler_Errors(t *testing.T) {
 	r := gin.New()
 	r.DELETE("/images/batch", BatchDeleteImages)
 
-	// bind error
+	// 绑定错误
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, httptest.NewRequest(http.MethodDelete, "/images/batch", bytes.NewReader([]byte("{bad"))))
 	if w1.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d body=%s", w1.Code, w1.Body.String())
+		t.Fatalf("期望 400，实际为 %d body=%s", w1.Code, w1.Body.String())
 	}
 
-	// empty list
+	// 空列表
 	body, _ := json.Marshal(gin.H{"ids": []uint{}})
 	w2 := httptest.NewRecorder()
 	r.ServeHTTP(w2, httptest.NewRequest(http.MethodDelete, "/images/batch", bytes.NewReader(body)))
 	if w2.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d body=%s", w2.Code, w2.Body.String())
+		t.Fatalf("期望 400，实际为 %d body=%s", w2.Code, w2.Body.String())
 	}
 
-	// too many
+	// 数量过多
 	ids := make([]uint, 51)
 	for i := range ids {
 		ids[i] = uint(i + 1)
@@ -113,14 +115,14 @@ func TestBatchDeleteImagesHandler_Errors(t *testing.T) {
 	w3 := httptest.NewRecorder()
 	r.ServeHTTP(w3, httptest.NewRequest(http.MethodDelete, "/images/batch", bytes.NewReader(body2)))
 	if w3.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d body=%s", w3.Code, w3.Body.String())
+		t.Fatalf("期望 400，实际为 %d body=%s", w3.Code, w3.Body.String())
 	}
 
-	// not found
+	// 未找到
 	body3, _ := json.Marshal(gin.H{"ids": []uint{1}})
 	w4 := httptest.NewRecorder()
 	r.ServeHTTP(w4, httptest.NewRequest(http.MethodDelete, "/images/batch", bytes.NewReader(body3)))
 	if w4.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d body=%s", w4.Code, w4.Body.String())
+		t.Fatalf("期望 404，实际为 %d body=%s", w4.Code, w4.Body.String())
 	}
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 测试内容：验证缺少 Authorization 头时返回 401。
 func TestJWTAuth_MissingHeaderUnauthorized(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -24,10 +25,11 @@ func TestJWTAuth_MissingHeaderUnauthorized(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d", w.Code)
+		t.Fatalf("期望 401，实际为 %d", w.Code)
 	}
 }
 
+// 测试内容：验证有效登录令牌会在上下文中设置用户信息。
 func TestJWTAuth_ValidTokenSetsContext(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -54,10 +56,11 @@ func TestJWTAuth_ValidTokenSetsContext(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
+		t.Fatalf("期望 200，实际为 %d", w.Code)
 	}
 }
 
+// 测试内容：验证被禁用用户状态会被拦截并返回 403。
 func TestUserStatusCheck_BannedForbidden(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -65,7 +68,7 @@ func TestUserStatusCheck_BannedForbidden(t *testing.T) {
 
 	u := model.User{Username: "alice", Password: "x", Status: 2, Email: "a@example.com"}
 	if err := db.DB.Create(&u).Error; err != nil {
-		t.Fatalf("create user: %v", err)
+		t.Fatalf("创建用户失败: %v", err)
 	}
 
 	r := gin.New()
@@ -80,10 +83,11 @@ func TestUserStatusCheck_BannedForbidden(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusForbidden {
-		t.Fatalf("expected 403, got %d", w.Code)
+		t.Fatalf("期望 403，实际为 %d", w.Code)
 	}
 }
 
+// 测试内容：验证正常用户状态通过检查并返回 200。
 func TestUserStatusCheck_NormalOK(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -104,25 +108,26 @@ func TestUserStatusCheck_NormalOK(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
+		t.Fatalf("期望 200，实际为 %d", w.Code)
 	}
 }
 
+// 测试内容：验证缺失 id、类型错误、未找到用户与禁用状态的错误分支处理。
 func TestUserStatusCheck_ErrorBranches(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
 	resetStatusCache()
 
-	// missing id
+	// 缺少 id
 	r1 := gin.New()
 	r1.GET("/x", UserStatusCheck(), func(c *gin.Context) { c.Status(http.StatusOK) })
 	w1 := httptest.NewRecorder()
 	r1.ServeHTTP(w1, httptest.NewRequest(http.MethodGet, "/x", nil))
 	if w1.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d", w1.Code)
+		t.Fatalf("期望 401，实际为 %d", w1.Code)
 	}
 
-	// wrong id type
+	// id 类型错误
 	r2 := gin.New()
 	r2.GET("/x",
 		func(c *gin.Context) { c.Set("id", "bad"); c.Next() },
@@ -132,10 +137,10 @@ func TestUserStatusCheck_ErrorBranches(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	r2.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, "/x", nil))
 	if w2.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d", w2.Code)
+		t.Fatalf("期望 401，实际为 %d", w2.Code)
 	}
 
-	// user not found
+	// 用户未找到
 	r3 := gin.New()
 	r3.GET("/x",
 		func(c *gin.Context) { c.Set("id", uint(999)); c.Next() },
@@ -145,10 +150,10 @@ func TestUserStatusCheck_ErrorBranches(t *testing.T) {
 	w3 := httptest.NewRecorder()
 	r3.ServeHTTP(w3, httptest.NewRequest(http.MethodGet, "/x", nil))
 	if w3.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d", w3.Code)
+		t.Fatalf("期望 401，实际为 %d", w3.Code)
 	}
 
-	// status 3 disabled
+	// 状态 3 已禁用
 	u := model.User{Username: "d", Password: "x", Status: 3, Email: "d@example.com"}
 	_ = db.DB.Create(&u).Error
 	r4 := gin.New()
@@ -160,10 +165,11 @@ func TestUserStatusCheck_ErrorBranches(t *testing.T) {
 	w4 := httptest.NewRecorder()
 	r4.ServeHTTP(w4, httptest.NewRequest(http.MethodGet, "/x", nil))
 	if w4.Code != http.StatusForbidden {
-		t.Fatalf("expected 403, got %d", w4.Code)
+		t.Fatalf("期望 403，实际为 %d", w4.Code)
 	}
 }
 
+// 测试内容：验证管理员校验对非管理员返回 403、管理员返回 200。
 func TestAdminCheck(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -176,7 +182,7 @@ func TestAdminCheck(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/admin", nil))
 	if w.Code != http.StatusForbidden {
-		t.Fatalf("expected 403 for non-admin, got %d", w.Code)
+		t.Fatalf("期望 403 for non-admin，实际为 %d", w.Code)
 	}
 
 	r2 := gin.New()
@@ -188,10 +194,11 @@ func TestAdminCheck(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	r2.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, "/admin", nil))
 	if w2.Code != http.StatusOK {
-		t.Fatalf("expected 200 for admin, got %d", w2.Code)
+		t.Fatalf("期望 200 for admin，实际为 %d", w2.Code)
 	}
 }
 
+// 测试内容：验证清除用户状态缓存会移除本地缓存条目。
 func TestClearUserStatusCache_RemovesLocalCache(t *testing.T) {
 	setupTestDB(t)
 	resetStatusCache()
@@ -199,6 +206,6 @@ func TestClearUserStatusCache_RemovesLocalCache(t *testing.T) {
 	statusCache.Store(uint(1), cachedStatus{Status: 2})
 	ClearUserStatusCache(uint(1))
 	if _, ok := statusCache.Load(uint(1)); ok {
-		t.Fatalf("expected cache entry to be removed")
+		t.Fatalf("期望缓存条目被移除")
 	}
 }

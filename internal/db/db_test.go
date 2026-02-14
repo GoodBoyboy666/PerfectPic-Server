@@ -9,11 +9,12 @@ import (
 	"perfect-pic-server/internal/model"
 )
 
+// 测试内容：验证使用 sqlite 临时文件初始化数据库并创建核心表。
 func TestInitDB_SQLiteTempFile(t *testing.T) {
 	tmp := t.TempDir()
 	cfgDir := filepath.Join(tmp, "cfg")
 	if err := os.MkdirAll(cfgDir, 0755); err != nil {
-		t.Fatalf("mkdir cfg: %v", err)
+		t.Fatalf("创建配置目录失败: %v", err)
 	}
 
 	dbFile := filepath.Join(tmp, "db", "test.db")
@@ -25,16 +26,16 @@ func TestInitDB_SQLiteTempFile(t *testing.T) {
 	InitDB()
 
 	if DB == nil {
-		t.Fatalf("expected DB to be initialized")
+		t.Fatalf("期望 DB to be initialized")
 	}
 	if !DB.Migrator().HasTable(&model.User{}) {
-		t.Fatalf("expected users table to exist")
+		t.Fatalf("期望 users table to exist")
 	}
 	if !DB.Migrator().HasTable(&model.Setting{}) {
-		t.Fatalf("expected settings table to exist")
+		t.Fatalf("期望 settings table to exist")
 	}
 	if !DB.Migrator().HasTable(&model.Image{}) {
-		t.Fatalf("expected images table to exist")
+		t.Fatalf("期望 images table to exist")
 	}
 
 	sqlDB, err := DB.DB()

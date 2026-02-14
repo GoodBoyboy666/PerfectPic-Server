@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 测试内容：验证 Web 信息接口仅返回允许的设置项。
 func TestGetWebInfo_ReturnsAllowedKeys(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -30,7 +31,7 @@ func TestGetWebInfo_ReturnsAllowedKeys(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/webinfo", nil))
 	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
+		t.Fatalf("期望 200，实际为 %d", w.Code)
 	}
 
 	var items []struct {
@@ -38,13 +39,14 @@ func TestGetWebInfo_ReturnsAllowedKeys(t *testing.T) {
 		Value string `json:"value"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &items); err != nil {
-		t.Fatalf("decode json: %v", err)
+		t.Fatalf("解析 JSON 失败: %v", err)
 	}
 	if len(items) != 4 {
-		t.Fatalf("expected 4 items, got %d", len(items))
+		t.Fatalf("期望 4 items，实际为 %d", len(items))
 	}
 }
 
+// 测试内容：验证图片前缀、头像前缀与默认配额接口返回成功。
 func TestWebInfoPrefixHandlers(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -57,18 +59,18 @@ func TestWebInfoPrefixHandlers(t *testing.T) {
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, httptest.NewRequest(http.MethodGet, "/image_prefix", nil))
 	if w1.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w1.Code)
+		t.Fatalf("期望 200，实际为 %d", w1.Code)
 	}
 
 	w2 := httptest.NewRecorder()
 	r.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, "/avatar_prefix", nil))
 	if w2.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w2.Code)
+		t.Fatalf("期望 200，实际为 %d", w2.Code)
 	}
 
 	w3 := httptest.NewRecorder()
 	r.ServeHTTP(w3, httptest.NewRequest(http.MethodGet, "/default_storage_quota", nil))
 	if w3.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w3.Code)
+		t.Fatalf("期望 200，实际为 %d", w3.Code)
 	}
 }

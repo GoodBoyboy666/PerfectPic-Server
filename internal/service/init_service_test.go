@@ -10,15 +10,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// 测试内容：验证系统初始化流程会创建管理员并更新初始化状态。
 func TestInitializeSystemAndIsSystemInitialized(t *testing.T) {
 	setupTestDB(t)
 
-	// Create default settings rows so InitializeSystem's Update() hits real rows.
+	// 创建默认设置行，使 InitializeSystem 的 Update() 命中真实行。
 	InitializeSettings()
 	ClearCache()
 
 	if IsSystemInitialized() {
-		t.Fatalf("expected system to be uninitialized when allow_init is true")
+		t.Fatalf("期望 system to be uninitialized when allow_init is true")
 	}
 
 	payload := InitPayload{
@@ -32,23 +33,23 @@ func TestInitializeSystemAndIsSystemInitialized(t *testing.T) {
 	}
 
 	if !IsSystemInitialized() {
-		t.Fatalf("expected system to be initialized after InitializeSystem")
+		t.Fatalf("期望 system to be initialized after InitializeSystem")
 	}
 
 	var s model.Setting
 	_ = db.DB.Where("key = ?", consts.ConfigSiteName).First(&s).Error
 	if s.Value != "MySite" {
-		t.Fatalf("expected site name updated, got %q", s.Value)
+		t.Fatalf("期望 site name updated，实际为 %q", s.Value)
 	}
 
 	var u model.User
 	if err := db.DB.Where("username = ?", "admin").First(&u).Error; err != nil {
-		t.Fatalf("expected admin user created: %v", err)
+		t.Fatalf("期望 admin user created: %v", err)
 	}
 	if !u.Admin {
-		t.Fatalf("expected admin flag true")
+		t.Fatalf("期望 admin flag true")
 	}
 	if bcrypt.CompareHashAndPassword([]byte(u.Password), []byte("abc12345")) != nil {
-		t.Fatalf("expected password to be hashed and match")
+		t.Fatalf("期望 password to be hashed and match")
 	}
 }

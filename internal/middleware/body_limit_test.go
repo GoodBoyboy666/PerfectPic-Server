@@ -15,13 +15,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 测试内容：验证上传体积限制会拒绝超大请求。
 func TestUploadBodyLimitMiddleware_RejectsTooLarge(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
 
-	// 1MB limit.
+	// 1MB 限制。
 	if err := db.DB.Save(&model.Setting{Key: consts.ConfigMaxUploadSize, Value: "1"}).Error; err != nil {
-		t.Fatalf("set setting: %v", err)
+		t.Fatalf("设置配置项失败: %v", err)
 	}
 	service.ClearCache()
 
@@ -35,15 +36,16 @@ func TestUploadBodyLimitMiddleware_RejectsTooLarge(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusRequestEntityTooLarge {
-		t.Fatalf("expected 413, got %d", w.Code)
+		t.Fatalf("期望 413，实际为 %d", w.Code)
 	}
 }
 
+// 测试内容：验证非上传路由的请求体限制生效。
 func TestBodyLimitMiddleware_LimitsNonUploadRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
 
-	// 1MB limit
+	// 1MB 限制
 	_ = db.DB.Save(&model.Setting{Key: consts.ConfigMaxRequestBodySize, Value: "1"}).Error
 	service.ClearCache()
 
@@ -64,6 +66,6 @@ func TestBodyLimitMiddleware_LimitsNonUploadRoutes(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusRequestEntityTooLarge {
-		t.Fatalf("expected 413, got %d body=%s", w.Code, w.Body.String())
+		t.Fatalf("期望 413，实际为 %d body=%s", w.Code, w.Body.String())
 	}
 }

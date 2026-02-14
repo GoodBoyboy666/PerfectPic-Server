@@ -13,12 +13,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 测试内容：验证静态缓存中间件按配置写入 Cache-Control 头。
 func TestStaticCacheMiddleware_SetsCacheControl(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
 
 	if err := db.DB.Save(&model.Setting{Key: consts.ConfigStaticCacheControl, Value: "public, max-age=60"}).Error; err != nil {
-		t.Fatalf("set setting: %v", err)
+		t.Fatalf("设置配置项失败: %v", err)
 	}
 	service.ClearCache()
 

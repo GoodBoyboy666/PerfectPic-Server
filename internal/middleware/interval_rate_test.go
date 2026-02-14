@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 测试内容：验证固定间隔限流会拦截同一来源的第二次请求。
 func TestIntervalRateMiddleware_BlocksSecondRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -22,7 +23,7 @@ func TestIntervalRateMiddleware_BlocksSecondRequest(t *testing.T) {
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, req1)
 	if w1.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w1.Code)
+		t.Fatalf("期望 200，实际为 %d", w1.Code)
 	}
 
 	req2 := httptest.NewRequest(http.MethodPost, "/x", bytes.NewReader([]byte("a")))
@@ -30,6 +31,6 @@ func TestIntervalRateMiddleware_BlocksSecondRequest(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	r.ServeHTTP(w2, req2)
 	if w2.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected 429, got %d", w2.Code)
+		t.Fatalf("期望 429，实际为 %d", w2.Code)
 	}
 }

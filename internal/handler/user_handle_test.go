@@ -19,6 +19,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// 测试内容：验证获取当前用户信息接口返回成功。
 func TestGetSelfInfo_OK(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -32,10 +33,11 @@ func TestGetSelfInfo_OK(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/me", nil))
 	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
+		t.Fatalf("期望 200，实际为 %d", w.Code)
 	}
 }
 
+// 测试内容：验证更新用户名的非法与合法场景。
 func TestUpdateSelfUsername_ValidAndInvalid(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -51,17 +53,18 @@ func TestUpdateSelfUsername_ValidAndInvalid(t *testing.T) {
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, httptest.NewRequest(http.MethodPatch, "/username", bytes.NewReader(bodyBad)))
 	if w1.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d body=%s", w1.Code, w1.Body.String())
+		t.Fatalf("期望 400，实际为 %d body=%s", w1.Code, w1.Body.String())
 	}
 
 	bodyOK, _ := json.Marshal(gin.H{"username": "alice2"})
 	w2 := httptest.NewRecorder()
 	r.ServeHTTP(w2, httptest.NewRequest(http.MethodPatch, "/username", bytes.NewReader(bodyOK)))
 	if w2.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d body=%s", w2.Code, w2.Body.String())
+		t.Fatalf("期望 200，实际为 %d body=%s", w2.Code, w2.Body.String())
 	}
 }
 
+// 测试内容：验证更新密码的错误与成功路径。
 func TestUpdateSelfPassword(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -77,17 +80,18 @@ func TestUpdateSelfPassword(t *testing.T) {
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, httptest.NewRequest(http.MethodPatch, "/password", bytes.NewReader(bodyBad)))
 	if w1.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d body=%s", w1.Code, w1.Body.String())
+		t.Fatalf("期望 400，实际为 %d body=%s", w1.Code, w1.Body.String())
 	}
 
 	bodyOK, _ := json.Marshal(gin.H{"old_password": "abc12345", "new_password": "abc123456"})
 	w2 := httptest.NewRecorder()
 	r.ServeHTTP(w2, httptest.NewRequest(http.MethodPatch, "/password", bytes.NewReader(bodyOK)))
 	if w2.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d body=%s", w2.Code, w2.Body.String())
+		t.Fatalf("期望 200，实际为 %d body=%s", w2.Code, w2.Body.String())
 	}
 }
 
+// 测试内容：验证更新头像成功并写入头像文件。
 func TestUpdateSelfAvatar_OK(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -115,17 +119,18 @@ func TestUpdateSelfAvatar_OK(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+		t.Fatalf("期望 200，实际为 %d body=%s", rec.Code, rec.Body.String())
 	}
 
-	// Ensure file was created somewhere under uploads/avatars/{uid}
+	// 确保文件已在 uploads/avatars/{uid} 下创建
 	userDir := filepath.Join("uploads", "avatars", strconv.FormatUint(uint64(u.ID), 10))
 	entries, err := os.ReadDir(userDir)
 	if err != nil || len(entries) == 0 {
-		t.Fatalf("expected avatar file created in %q: err=%v entries=%d", userDir, err, len(entries))
+		t.Fatalf("期望 avatar file created in %q: err=%v entries=%d", userDir, err, len(entries))
 	}
 }
 
+// 测试内容：验证请求修改邮箱时密码错误返回 403。
 func TestRequestUpdateEmailHandler_ForbiddenOnWrongPassword(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -141,10 +146,11 @@ func TestRequestUpdateEmailHandler_ForbiddenOnWrongPassword(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/email", bytes.NewReader(body)))
 	if w.Code != http.StatusForbidden {
-		t.Fatalf("expected 403, got %d body=%s", w.Code, w.Body.String())
+		t.Fatalf("期望 403，实际为 %d body=%s", w.Code, w.Body.String())
 	}
 }
 
+// 测试内容：验证获取用户图片数量接口返回正确结果。
 func TestGetSelfImagesCountHandler_OK(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -159,6 +165,6 @@ func TestGetSelfImagesCountHandler_OK(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/count", nil))
 	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d body=%s", w.Code, w.Body.String())
+		t.Fatalf("期望 200，实际为 %d body=%s", w.Code, w.Body.String())
 	}
 }

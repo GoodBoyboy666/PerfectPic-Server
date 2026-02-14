@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 测试内容：验证管理员用户增删改查及头像操作的完整流程。
 func TestUserManageHandlers_CRUD(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -25,7 +26,7 @@ func TestUserManageHandlers_CRUD(t *testing.T) {
 	_ = os.Chdir(tmp)
 	defer func() { _ = os.Chdir(oldwd) }()
 
-	// Seed one user for list/update/delete tests.
+	// 为列表/更新/删除测试预置一个用户。
 	u := model.User{Username: "seed", Password: "x", Status: 1, Email: "seed@example.com"}
 	_ = db.DB.Create(&u).Error
 
@@ -38,37 +39,37 @@ func TestUserManageHandlers_CRUD(t *testing.T) {
 	r.POST("/users/:id/avatar", UpdateUserAvatar)
 	r.DELETE("/users/:id/avatar", RemoveUserAvatar)
 
-	// List
+	// 列表
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, httptest.NewRequest(http.MethodGet, "/users?page=1&page_size=10", nil))
 	if w1.Code != http.StatusOK {
-		t.Fatalf("list expected 200, got %d body=%s", w1.Code, w1.Body.String())
+		t.Fatalf("list 期望 200，实际为 %d body=%s", w1.Code, w1.Body.String())
 	}
 
-	// Detail
+	// 详情
 	w1b := httptest.NewRecorder()
 	r.ServeHTTP(w1b, httptest.NewRequest(http.MethodGet, "/users/1", nil))
 	if w1b.Code != http.StatusOK {
-		t.Fatalf("detail expected 200, got %d body=%s", w1b.Code, w1b.Body.String())
+		t.Fatalf("detail 期望 200，实际为 %d body=%s", w1b.Code, w1b.Body.String())
 	}
 
-	// Create
+	// 创建
 	bodyCreate, _ := json.Marshal(gin.H{"username": "alice_1", "password": "abc12345", "email": "a1@example.com"})
 	w2 := httptest.NewRecorder()
 	r.ServeHTTP(w2, httptest.NewRequest(http.MethodPost, "/users", bytes.NewReader(bodyCreate)))
 	if w2.Code != http.StatusCreated {
-		t.Fatalf("create expected 201, got %d body=%s", w2.Code, w2.Body.String())
+		t.Fatalf("create 期望 201，实际为 %d body=%s", w2.Code, w2.Body.String())
 	}
 
-	// Update
+	// 更新
 	bodyUpdate, _ := json.Marshal(gin.H{"status": 2})
 	w3 := httptest.NewRecorder()
 	r.ServeHTTP(w3, httptest.NewRequest(http.MethodPatch, "/users/1", bytes.NewReader(bodyUpdate)))
 	if w3.Code != http.StatusOK {
-		t.Fatalf("update expected 200, got %d body=%s", w3.Code, w3.Body.String())
+		t.Fatalf("update 期望 200，实际为 %d body=%s", w3.Code, w3.Body.String())
 	}
 
-	// Update avatar
+	// 更新头像
 	var mp bytes.Buffer
 	mw := multipart.NewWriter(&mp)
 	part, _ := mw.CreateFormFile("file", "a.png")
@@ -79,24 +80,25 @@ func TestUserManageHandlers_CRUD(t *testing.T) {
 	w4 := httptest.NewRecorder()
 	r.ServeHTTP(w4, reqAvatar)
 	if w4.Code != http.StatusOK {
-		t.Fatalf("update avatar expected 200, got %d body=%s", w4.Code, w4.Body.String())
+		t.Fatalf("update avatar 期望 200，实际为 %d body=%s", w4.Code, w4.Body.String())
 	}
 
-	// Remove avatar
+	// 移除头像
 	w5 := httptest.NewRecorder()
 	r.ServeHTTP(w5, httptest.NewRequest(http.MethodDelete, "/users/1/avatar", nil))
 	if w5.Code != http.StatusOK {
-		t.Fatalf("remove avatar expected 200, got %d body=%s", w5.Code, w5.Body.String())
+		t.Fatalf("remove avatar 期望 200，实际为 %d body=%s", w5.Code, w5.Body.String())
 	}
 
-	// Delete (soft delete)
+	// 删除（软删除）
 	w6 := httptest.NewRecorder()
 	r.ServeHTTP(w6, httptest.NewRequest(http.MethodDelete, "/users/1?hard_delete=false", nil))
 	if w6.Code != http.StatusOK {
-		t.Fatalf("delete expected 200, got %d body=%s", w6.Code, w6.Body.String())
+		t.Fatalf("delete 期望 200，实际为 %d body=%s", w6.Code, w6.Body.String())
 	}
 }
 
+// 测试内容：验证管理员用户接口的参数错误与未找到等分支。
 func TestUserManageHandlers_ErrorBranches(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	setupTestDB(t)
@@ -109,59 +111,59 @@ func TestUserManageHandlers_ErrorBranches(t *testing.T) {
 	r.POST("/users/:id/avatar", UpdateUserAvatar)
 	r.DELETE("/users/:id/avatar", RemoveUserAvatar)
 
-	// bad id
+	// 无效 id
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, httptest.NewRequest(http.MethodGet, "/users/not-int", nil))
 	if w1.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w1.Code)
+		t.Fatalf("期望 400，实际为 %d", w1.Code)
 	}
 
-	// not found
+	// 未找到
 	w2 := httptest.NewRecorder()
 	r.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, "/users/999", nil))
 	if w2.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w2.Code)
+		t.Fatalf("期望 404，实际为 %d", w2.Code)
 	}
 
-	// create bind error
+	// 创建绑定错误
 	w3 := httptest.NewRecorder()
 	r.ServeHTTP(w3, httptest.NewRequest(http.MethodPost, "/users", bytes.NewReader([]byte("{bad"))))
 	if w3.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w3.Code)
+		t.Fatalf("期望 400，实际为 %d", w3.Code)
 	}
 
-	// update invalid id
+	// 更新时 id 无效
 	w4 := httptest.NewRecorder()
 	r.ServeHTTP(w4, httptest.NewRequest(http.MethodPatch, "/users/not-int", bytes.NewReader([]byte(`{}`))))
 	if w4.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w4.Code)
+		t.Fatalf("期望 400，实际为 %d", w4.Code)
 	}
 
-	// update invalid status validation error
+	// 更新时状态校验错误
 	w5 := httptest.NewRecorder()
 	r.ServeHTTP(w5, httptest.NewRequest(http.MethodPatch, "/users/1", bytes.NewReader([]byte(`{"status":9}`))))
 	if w5.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d body=%s", w5.Code, w5.Body.String())
+		t.Fatalf("期望 400，实际为 %d body=%s", w5.Code, w5.Body.String())
 	}
 
-	// delete invalid id
+	// 删除时 id 无效
 	w6 := httptest.NewRecorder()
 	r.ServeHTTP(w6, httptest.NewRequest(http.MethodDelete, "/users/not-int", nil))
 	if w6.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w6.Code)
+		t.Fatalf("期望 400，实际为 %d", w6.Code)
 	}
 
-	// avatar missing file
+	// 头像缺少文件
 	w7 := httptest.NewRecorder()
 	r.ServeHTTP(w7, httptest.NewRequest(http.MethodPost, "/users/1/avatar", nil))
 	if w7.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w7.Code)
+		t.Fatalf("期望 400，实际为 %d", w7.Code)
 	}
 
-	// remove avatar not found
+	// 删除头像未找到
 	w8 := httptest.NewRecorder()
 	r.ServeHTTP(w8, httptest.NewRequest(http.MethodDelete, "/users/999/avatar", nil))
 	if w8.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w8.Code)
+		t.Fatalf("期望 404，实际为 %d", w8.Code)
 	}
 }
