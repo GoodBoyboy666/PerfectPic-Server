@@ -17,6 +17,7 @@ import (
 
 var DB *gorm.DB
 
+//nolint:gocyclo
 func InitDB() {
 	var err error
 	cfg := config.Get()

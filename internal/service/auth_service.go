@@ -87,6 +87,11 @@ func LoginUser(username, password string) (string, error) {
 //
 //nolint:gocyclo
 func RegisterUser(username, password, email string) error {
+	// 系统未初始化时禁止注册：避免在还未创建管理员/完成基础配置时产生普通用户。
+	if !IsSystemInitialized() {
+		return newAuthError(AuthErrorForbidden, "系统尚未初始化，请先完成初始化")
+	}
+
 	if ok, msg := utils.ValidatePassword(password); !ok {
 		return newAuthError(AuthErrorValidation, msg)
 	}
