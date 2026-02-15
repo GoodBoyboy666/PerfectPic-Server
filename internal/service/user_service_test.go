@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"perfect-pic-server/internal/consts"
 	"perfect-pic-server/internal/db"
@@ -129,6 +130,27 @@ func TestEmailChangeToken_OneTimeAndReplaced(t *testing.T) {
 	item, ok := VerifyEmailChangeToken(tok3)
 	if !ok || item == nil || item.NewEmail != "new3@example.com" {
 		t.Fatalf("expected newest token to be valid, got item=%+v ok=%v", item, ok)
+	}
+}
+
+// 测试内容：验证过期的邮箱变更 token 会被拒绝（内存回退分支）。
+func TestEmailChangeToken_ExpiredRejected(t *testing.T) {
+	setupTestDB(t)
+	resetEmailChangeStore()
+	t.Cleanup(resetEmailChangeStore)
+
+	const expiredToken = "expired_email_change_token"
+	emailChangeStore.Store(uint(1001), EmailChangeToken{
+		UserID:    1001,
+		Token:     expiredToken,
+		OldEmail:  "old@example.com",
+		NewEmail:  "new@example.com",
+		ExpiresAt: time.Now().Add(-time.Minute),
+	})
+
+	item, ok := VerifyEmailChangeToken(expiredToken)
+	if ok || item != nil {
+		t.Fatalf("expected expired token to be rejected, got item=%+v ok=%v", item, ok)
 	}
 }
 

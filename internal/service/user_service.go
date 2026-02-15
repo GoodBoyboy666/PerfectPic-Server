@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -17,6 +18,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type ForgetPasswordToken struct {
@@ -48,6 +51,62 @@ var (
 	// Key: UserID (uint), Value: EmailChangeToken
 	emailChangeStore sync.Map
 )
+
+var errRedisTokenCASMismatch = errors.New("redis token cas mismatch")
+
+func verifyAndConsumeRedisTokenPair(
+	ctx context.Context,
+	redisClient *redis.Client,
+	tokenKey string,
+	userKey string,
+	expectedUserToken string,
+	expectedTokenValue string,
+) error {
+	var consumed bool
+	watchErr := redisClient.Watch(ctx, func(tx *redis.Tx) error {
+		currentUserToken, getErr := tx.Get(ctx, userKey).Result()
+		if getErr != nil {
+			if errors.Is(getErr, redis.Nil) {
+				return redis.TxFailedErr
+			}
+			return getErr
+		}
+		if currentUserToken != expectedUserToken {
+			return redis.TxFailedErr
+		}
+
+		currentTokenValue, tokenErr := tx.Get(ctx, tokenKey).Result()
+		if tokenErr != nil {
+			if errors.Is(tokenErr, redis.Nil) {
+				return redis.TxFailedErr
+			}
+			return tokenErr
+		}
+		if currentTokenValue != expectedTokenValue {
+			return redis.TxFailedErr
+		}
+
+		_, pipeErr := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			pipe.Del(ctx, tokenKey)
+			pipe.Del(ctx, userKey)
+			return nil
+		})
+		if pipeErr != nil {
+			return pipeErr
+		}
+
+		consumed = true
+		return nil
+	}, userKey, tokenKey)
+
+	if watchErr == nil && consumed {
+		return nil
+	}
+	if errors.Is(watchErr, redis.TxFailedErr) || (!consumed && watchErr == nil) {
+		return errRedisTokenCASMismatch
+	}
+	return watchErr
+}
 
 // GenerateForgetPasswordToken 生成忘记密码 Token，有效期 15 分钟
 func GenerateForgetPasswordToken(userID uint) (string, error) {
@@ -102,16 +161,18 @@ func VerifyForgetPasswordToken(token string) (uint, bool) {
 			uid, parseErr := strconv.ParseUint(uidStr, 10, 64)
 			if parseErr == nil {
 				userKey := RedisKey("password_reset", "user", strconv.FormatUint(uid, 10))
-				currentToken, keyErr := redisClient.Get(ctx, userKey).Result()
-				if keyErr != nil || currentToken != token {
-					// tokenKey 存在但 userKey 不匹配，按无效处理并清理当前 tokenKey。
+				casErr := verifyAndConsumeRedisTokenPair(ctx, redisClient, tokenKey, userKey, token, uidStr)
+				if casErr == nil {
+					return uint(uid), true
+				}
+
+				// 比对失败或并发竞争时，仅清理当前 tokenKey，避免误删新 token 对应的 userKey。
+				if errors.Is(casErr, errRedisTokenCASMismatch) {
 					_ = redisClient.Del(ctx, tokenKey).Err()
 					return 0, false
 				}
-				// 通过双向映射校验后再消费两侧键。
-				_ = redisClient.Del(ctx, tokenKey).Err()
-				_ = redisClient.Del(ctx, userKey).Err()
-				return uint(uid), true
+
+				return 0, false
 			}
 			_ = redisClient.Del(ctx, tokenKey).Err()
 			return 0, false
@@ -226,22 +287,21 @@ func VerifyEmailChangeToken(token string) (*EmailChangeToken, bool) {
 			}
 
 			userKey := RedisKey("email_change", "user", strconv.FormatUint(uint64(payload.UserID), 10))
-			currentToken, err := redisClient.Get(ctx, userKey).Result()
-			if err != nil || currentToken != token {
-				// tokenKey 存在但 userKey 不匹配，按无效处理并清理当前 tokenKey。
+			casErr := verifyAndConsumeRedisTokenPair(ctx, redisClient, tokenKey, userKey, token, raw)
+			if casErr == nil {
+				return &EmailChangeToken{
+					UserID:   payload.UserID,
+					OldEmail: payload.OldEmail,
+					NewEmail: payload.NewEmail,
+				}, true
+			}
+
+			// 比对失败或并发竞争时，仅清理当前 tokenKey，避免误删新 token 对应的 userKey。
+			if errors.Is(casErr, errRedisTokenCASMismatch) {
 				_ = redisClient.Del(ctx, tokenKey).Err()
 				return nil, false
 			}
-
-			// 通过双向映射校验后再消费两侧键。
-			_ = redisClient.Del(ctx, tokenKey).Err()
-			_ = redisClient.Del(ctx, userKey).Err()
-
-			return &EmailChangeToken{
-				UserID:   payload.UserID,
-				OldEmail: payload.OldEmail,
-				NewEmail: payload.NewEmail,
-			}, true
+			return nil, false
 		}
 	}
 
