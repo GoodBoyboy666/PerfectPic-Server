@@ -313,6 +313,13 @@ func TestDeleteUserForAdmin_HardDeleteAlsoDeletesFiles(t *testing.T) {
 	if err := db.DB.Unscoped().First(&model.User{}, u.ID).Error; err == nil {
 		t.Fatalf("期望 user to be hard-deleted")
 	}
+	var imgCount int64
+	if err := db.DB.Unscoped().Model(&model.Image{}).Where("user_id = ?", u.ID).Count(&imgCount).Error; err != nil {
+		t.Fatalf("count images: %v", err)
+	}
+	if imgCount != 0 {
+		t.Fatalf("期望 images to be cascade-deleted，实际剩余 %d 条", imgCount)
+	}
 	if _, err := os.Stat(realAvatarDir); !os.IsNotExist(err) {
 		t.Fatalf("期望 avatar dir deleted, err=%v", err)
 	}

@@ -27,6 +27,9 @@ func SetupDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
+	if err := gdb.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
+		t.Fatalf("enable foreign keys: %v", err)
+	}
 	sqlDB, err := gdb.DB()
 	if err != nil {
 		t.Fatalf("get sql db: %v", err)

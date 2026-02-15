@@ -68,6 +68,14 @@ func InitDB() {
 		log.Fatal("❌ 数据库连接失败: ", err)
 	}
 
+	// SQLite 的外键约束默认是关闭的（且是“按连接”生效）。
+	// 这里显式开启，避免 DSN 参数在不同 driver/场景下未生效导致级联删除不工作。
+	if cfg.Database.Type == "sqlite" {
+		if err := DB.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
+			log.Fatal("❌ 无法启用 SQLite 外键约束(PRAGMA foreign_keys=ON): ", err)
+		}
+	}
+
 	// 获取底层 sql.DB 以配置连接池
 	sqlDB, err := DB.DB()
 	if err != nil {
@@ -94,6 +102,30 @@ func InitDB() {
 
 	if err != nil {
 		log.Fatal("❌ 数据库迁移失败: ", err)
+	}
+
+	if cfg.Database.Type == "sqlite" {
+		// 仅提示：如果数据库是旧版本、images 表曾在没有外键约束的情况下创建，
+		// SQLite 的 ALTER TABLE 能力有限，AutoMigrate 可能无法补上外键与 ON DELETE CASCADE。
+		type fkRow struct {
+			Table    string `gorm:"column:table"`
+			From     string `gorm:"column:from"`
+			To       string `gorm:"column:to"`
+			OnDelete string `gorm:"column:on_delete"`
+		}
+		var fks []fkRow
+		if err := DB.Raw("PRAGMA foreign_key_list(images)").Scan(&fks).Error; err == nil {
+			hasCascade := false
+			for _, fk := range fks {
+				if fk.Table == "users" && fk.From == "user_id" && fk.To == "id" && fk.OnDelete == "CASCADE" {
+					hasCascade = true
+					break
+				}
+			}
+			if !hasCascade {
+				log.Printf("⚠️ SQLite 表 images 未检测到 user_id -> users(id) 的 ON DELETE CASCADE 外键；硬删除用户时图片记录可能不会被级联删除。建议重建 images 表或重新初始化数据库文件。")
+			}
+		}
 	}
 
 	log.Printf("✅ 数据库(%s)连接成功，表结构已同步", cfg.Database.Type)
