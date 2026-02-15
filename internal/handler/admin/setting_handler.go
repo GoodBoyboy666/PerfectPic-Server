@@ -11,7 +11,7 @@ import (
 
 type UpdateSettingRequest struct {
 	Key   string `json:"key" binding:"required"`
-	Value string `json:"value" binding:"required"`
+	Value string `json:"value"`
 }
 
 func GetSettings(c *gin.Context) {

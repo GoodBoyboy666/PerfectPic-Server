@@ -92,3 +92,33 @@ func TestUpdateSettingsHandler_BindError(t *testing.T) {
 		t.Fatalf("期望 400，实际为 %d body=%s", w.Code, w.Body.String())
 	}
 }
+
+// 测试内容：验证可以成功设置空值，例如，通过用空字符串值更新设置。
+func TestUpdateSettingHandler_EmptyValue(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	setupTestDB(t)
+
+	r := gin.New()
+	r.PATCH("/settings", UpdateSettings)
+
+	// 发送包含空字符串值的请求
+	body, _ := json.Marshal([]UpdateSettingRequest{{Key: "k3", Value: ""}})
+	w := httptest.NewRecorder()
+
+	req := httptest.NewRequest(http.MethodPatch, "/settings", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("期望 200，实际为 %d body=%s", w.Code, w.Body.String())
+	}
+
+	// 确认它已正确保存到数据库中
+	var s model.Setting
+	if err := db.DB.Where("key = ?", "k3").First(&s).Error; err != nil {
+		t.Fatalf("无法找到 k3: %v", err)
+	}
+	if s.Value != "" {
+		t.Fatalf("期望 updated k3=\"\"，实际为 %q", s.Value)
+	}
+}
