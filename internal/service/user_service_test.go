@@ -46,6 +46,12 @@ func TestDeleteUserFiles_RemovesAvatarDirAndImages(t *testing.T) {
 	defer func() { _ = os.Chdir(oldwd) }()
 
 	userID := uint(7)
+	_ = db.DB.Create(&model.User{
+		ID:       userID,
+		Username: "user_7",
+		Password: "x",
+		Status:   1,
+	}).Error
 
 	// 创建包含文件的头像目录。
 	avatarDir := filepath.Join("uploads", "avatars", "7")

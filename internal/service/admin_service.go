@@ -377,6 +377,11 @@ func DeleteUserForAdmin(userID uint, hardDelete bool) error {
 			if err := tx.Unscoped().First(&user, userID).Error; err != nil {
 				return err
 			}
+			// 不依赖数据库外键级联（SQLite 需要 foreign_keys=ON 且旧表可能没有 CASCADE 约束），
+			// 这里显式清理关联图片记录，保证硬删除用户后不会残留 images。
+			if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&model.Image{}).Error; err != nil {
+				return err
+			}
 			return tx.Unscoped().Delete(&user).Error
 		})
 	}
