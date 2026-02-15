@@ -14,17 +14,21 @@ func SecurityHeaders() gin.HandlerFunc {
 		// Content Security Policy (CSP)
 		// 限制资源加载来源，防止 XSS
 		// default-src 'self': 默认只允许加载同源资源
-		// img-src 'self' data: blob:: 允许加载同源图片以及 data: 和 blob: 协议的图片
-		// style-src 'self' 'unsafe-inline': 允许同源样式和内联样式 (很多前端框架需要)
-		// script-src 'self': 只允许同源脚本
+		// img-src: 允许同源、data:、blob: 以及验证码服务 (Geetest, Google, hCaptcha) 的图片
+		// style-src: 允许同源、内联样式以及验证码服务的样式
+		// script-src: 允许同源以及验证码服务 (Geetest, Cloudflare, Google, hCaptcha) 的脚本
+		// connect-src: 允许连接到验证码服务的 API
+		// frame-src: 允许嵌入验证码服务的 iframe
+		// frame-ancestors 'none': 禁止被其他网站嵌入 (替代 X-Frame-Options)
 		csp := "default-src 'self'; " +
 			"img-src 'self' data: blob: https://*.geetest.com https://www.google.com https://www.gstatic.com https://*.hcaptcha.com https://hcaptcha.com; " +
 			"style-src 'self' 'unsafe-inline' https://*.geetest.com https://*.hcaptcha.com https://hcaptcha.com; " +
-			"script-src 'self' *.geetest.com https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com https://*.hcaptcha.com https://hcaptcha.com; " +
-			"connect-src 'self' *.geetest.com https://challenges.cloudflare.com https://www.google.com https://*.hcaptcha.com https://hcaptcha.com; " +
+			"script-src 'self' https://*.geetest.com https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com https://*.hcaptcha.com https://hcaptcha.com; " +
+			"connect-src 'self' https://*.geetest.com https://challenges.cloudflare.com https://www.google.com https://*.hcaptcha.com https://hcaptcha.com; " +
 			"object-src 'none'; " +
-			"frame-src 'self' *.geetest.com https://challenges.cloudflare.com https://www.google.com https://*.hcaptcha.com https://hcaptcha.com; " +
-			"base-uri 'self';"
+			"frame-src 'self' https://*.geetest.com https://challenges.cloudflare.com https://www.google.com https://*.hcaptcha.com https://hcaptcha.com; " +
+			"base-uri 'self'; " +
+			"frame-ancestors 'none';"
 
 		c.Header("Content-Security-Policy", csp)
 
