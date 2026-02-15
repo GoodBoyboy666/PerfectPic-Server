@@ -17,7 +17,14 @@ func SecurityHeaders() gin.HandlerFunc {
 		// img-src 'self' data: blob:: 允许加载同源图片以及 data: 和 blob: 协议的图片
 		// style-src 'self' 'unsafe-inline': 允许同源样式和内联样式 (很多前端框架需要)
 		// script-src 'self': 只允许同源脚本
-		c.Header("Content-Security-Policy", "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self';")
+		csp := "default-src 'self'; " +
+			"img-src 'self' data: blob: *.geetest.com https://www.google.com https://www.gstatic.com https://*.hcaptcha.com https://hcaptcha.com; " +
+			"style-src 'self' 'unsafe-inline' *.geetest.com https://*.hcaptcha.com https://hcaptcha.com; " +
+			"script-src 'self' *.geetest.com https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com https://*.hcaptcha.com https://hcaptcha.com; " +
+			"connect-src 'self' *.geetest.com https://challenges.cloudflare.com https://www.google.com https://*.hcaptcha.com https://hcaptcha.com; " +
+			"frame-src 'self' *.geetest.com https://challenges.cloudflare.com https://www.google.com https://*.hcaptcha.com https://hcaptcha.com;"
+
+		c.Header("Content-Security-Policy", csp)
 
 		c.Next()
 	}
