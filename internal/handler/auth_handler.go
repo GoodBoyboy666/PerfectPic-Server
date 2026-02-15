@@ -222,7 +222,8 @@ func ResetPassword(c *gin.Context) {
 }
 
 func GetRegisterState(c *gin.Context) {
-	allowRegister := service.GetBool(consts.ConfigAllowRegister)
+	initialized := service.IsSystemInitialized()
+	allowRegister := initialized && service.GetBool(consts.ConfigAllowRegister)
 	c.JSON(http.StatusOK, gin.H{
 		"allow_register": allowRegister,
 	})

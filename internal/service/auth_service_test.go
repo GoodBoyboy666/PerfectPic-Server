@@ -99,6 +99,8 @@ func TestLoginUser_BlockedUnverifiedForbidden(t *testing.T) {
 // 测试内容：验证注册参数不合法时返回校验错误。
 func TestRegisterUser_ValidationError(t *testing.T) {
 	setupTestDB(t)
+	_ = db.DB.Save(&model.Setting{Key: consts.ConfigAllowInit, Value: "false"}).Error
+	ClearCache()
 
 	err := RegisterUser("ab", "short", "bad-email")
 	if err == nil {
@@ -113,6 +115,8 @@ func TestRegisterUser_ValidationError(t *testing.T) {
 // 测试内容：验证用户名重复时返回冲突错误。
 func TestRegisterUser_DuplicateUsernameConflict(t *testing.T) {
 	setupTestDB(t)
+	_ = db.DB.Save(&model.Setting{Key: consts.ConfigAllowInit, Value: "false"}).Error
+	ClearCache()
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte("abc12345"), bcrypt.DefaultCost)
 	u := model.User{Username: "alice", Password: string(hashed), Status: 1, Email: "a1@example.com"}
@@ -174,6 +178,9 @@ func TestVerifyEmail_SetsVerified(t *testing.T) {
 func TestRegisterUser_SuccessCreatesUser(t *testing.T) {
 	setupTestDB(t)
 
+	_ = db.DB.Save(&model.Setting{Key: consts.ConfigAllowInit, Value: "false"}).Error
+	ClearCache()
+
 	if err := RegisterUser("alice_1", "abc12345", "a1@example.com"); err != nil {
 		t.Fatalf("RegisterUser: %v", err)
 	}
@@ -187,6 +194,21 @@ func TestRegisterUser_SuccessCreatesUser(t *testing.T) {
 	}
 	if bcrypt.CompareHashAndPassword([]byte(u.Password), []byte("abc12345")) != nil {
 		t.Fatalf("期望 stored password to be bcrypt hash")
+	}
+}
+
+// 测试内容：验证系统未初始化时注册被禁止（返回 forbidden）。
+func TestRegisterUser_ForbiddenWhenSystemNotInitialized(t *testing.T) {
+	setupTestDB(t)
+
+	// 默认 allow_init=true；这里不写配置，确保走“未初始化”分支。
+	err := RegisterUser("alice_1", "abc12345", "a1@example.com")
+	if err == nil {
+		t.Fatalf("期望返回错误")
+	}
+	authErr, ok := AsAuthError(err)
+	if !ok || authErr.Code != AuthErrorForbidden {
+		t.Fatalf("期望 forbidden auth 错误, got: %#v (%v)", authErr, err)
 	}
 }
 

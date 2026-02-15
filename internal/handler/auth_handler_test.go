@@ -81,6 +81,7 @@ func TestRegisterHandler_ForbiddenWhenDisabled(t *testing.T) {
 	setupTestDB(t)
 
 	_ = db.DB.Save(&model.Setting{Key: consts.ConfigCaptchaProvider, Value: ""}).Error
+	_ = db.DB.Save(&model.Setting{Key: consts.ConfigAllowInit, Value: "false"}).Error
 	_ = db.DB.Save(&model.Setting{Key: consts.ConfigAllowRegister, Value: "false"}).Error
 	service.ClearCache()
 
@@ -126,6 +127,7 @@ func TestRegisterHandler_Success(t *testing.T) {
 	setupTestDB(t)
 
 	_ = db.DB.Save(&model.Setting{Key: consts.ConfigCaptchaProvider, Value: ""}).Error
+	_ = db.DB.Save(&model.Setting{Key: consts.ConfigAllowInit, Value: "false"}).Error
 	_ = db.DB.Save(&model.Setting{Key: consts.ConfigAllowRegister, Value: "true"}).Error
 	service.ClearCache()
 
