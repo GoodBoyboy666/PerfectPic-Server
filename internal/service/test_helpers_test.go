@@ -20,3 +20,10 @@ func resetPasswordResetStore() {
 		return true
 	})
 }
+
+func resetEmailChangeStore() {
+	emailChangeStore.Range(func(key, value any) bool {
+		emailChangeStore.Delete(key)
+		return true
+	})
+}

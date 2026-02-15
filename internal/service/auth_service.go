@@ -203,29 +203,25 @@ func VerifyEmail(token string) (bool, error) {
 
 // VerifyEmailChange 验证邮箱变更令牌并更新邮箱。
 func VerifyEmailChange(token string) error {
-	claims, err := utils.ParseEmailChangeToken(token)
-	if err != nil {
+	payload, ok := VerifyEmailChangeToken(token)
+	if !ok {
 		return newAuthError(AuthErrorValidation, "验证链接已失效或不正确")
 	}
 
-	if claims.Type != "email_change" {
-		return newAuthError(AuthErrorValidation, "无效的验证 Token 类型")
-	}
-
 	var user model.User
-	if err := db.DB.First(&user, claims.ID).Error; err != nil {
+	if err := db.DB.First(&user, payload.UserID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return newAuthError(AuthErrorNotFound, "用户不存在")
 		}
 		return newAuthError(AuthErrorInternal, "邮箱修改失败，请稍后重试")
 	}
 
-	if user.Email != claims.OldEmail {
+	if user.Email != payload.OldEmail {
 		return newAuthError(AuthErrorValidation, "您的当前邮箱已变更，该验证链接已失效")
 	}
 
-	excludeID := claims.ID
-	emailTaken, err := IsEmailTaken(claims.NewEmail, &excludeID, true)
+	excludeID := payload.UserID
+	emailTaken, err := IsEmailTaken(payload.NewEmail, &excludeID, true)
 	if err != nil {
 		return newAuthError(AuthErrorInternal, "邮箱修改失败，请稍后重试")
 	}
@@ -233,7 +229,7 @@ func VerifyEmailChange(token string) error {
 		return newAuthError(AuthErrorConflict, "新邮箱已被其他用户占用，无法修改")
 	}
 
-	user.Email = claims.NewEmail
+	user.Email = payload.NewEmail
 	user.EmailVerified = true
 	if err := db.DB.Save(&user).Error; err != nil {
 		return newAuthError(AuthErrorInternal, "邮箱修改失败，请稍后重试")

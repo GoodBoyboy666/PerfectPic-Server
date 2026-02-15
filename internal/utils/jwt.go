@@ -28,15 +28,6 @@ type EmailClaims struct {
 	jwt.RegisteredClaims
 }
 
-// EmailChangeClaims 用于修改邮箱验证
-type EmailChangeClaims struct {
-	ID       uint   `json:"id"`
-	OldEmail string `json:"old_email"`
-	NewEmail string `json:"new_email"`
-	Type     string `json:"type"` // "email_change"
-	jwt.RegisteredClaims
-}
-
 func getSecret() []byte {
 	return []byte(config.Get().JWT.Secret)
 }
@@ -61,21 +52,6 @@ func GenerateEmailToken(id uint, email string, duration time.Duration) (string, 
 		ID:    id,
 		Email: email,
 		Type:  "email_verify",
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
-			Issuer:    "perfect-pic-server",
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(getSecret())
-}
-
-func GenerateEmailChangeToken(id uint, oldEmail, newEmail string, duration time.Duration) (string, error) {
-	claims := EmailChangeClaims{
-		ID:       id,
-		OldEmail: oldEmail,
-		NewEmail: newEmail,
-		Type:     "email_change",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 			Issuer:    "perfect-pic-server",
@@ -121,28 +97,6 @@ func ParseEmailToken(tokenString string) (*EmailClaims, error) {
 
 	if claims, ok := token.Claims.(*EmailClaims); ok && token.Valid {
 		if claims.Type != "email_verify" {
-			return nil, errors.New("invalid token type")
-		}
-		return claims, nil
-	}
-
-	return nil, errors.New("invalid token")
-}
-
-func ParseEmailChangeToken(tokenString string) (*EmailChangeClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &EmailChangeClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return getSecret(), nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	if claims, ok := token.Claims.(*EmailChangeClaims); ok && token.Valid {
-		if claims.Type != "email_change" {
 			return nil, errors.New("invalid token type")
 		}
 		return claims, nil

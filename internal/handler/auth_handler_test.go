@@ -226,7 +226,7 @@ func TestEmailChangeVerifyHandler_OK(t *testing.T) {
 	u := model.User{Username: "alice", Password: string(hashed), Status: 1, Email: "old@example.com", EmailVerified: true}
 	_ = db.DB.Create(&u).Error
 
-	token, err := utils.GenerateEmailChangeToken(u.ID, "old@example.com", "new@example.com", time.Hour)
+	token, err := service.GenerateEmailChangeToken(u.ID, "old@example.com", "new@example.com")
 	if err != nil {
 		t.Fatalf("GenerateEmailChangeToken: %v", err)
 	}

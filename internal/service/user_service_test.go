@@ -98,6 +98,40 @@ func TestDeleteUserFiles_RemovesAvatarDirAndImages(t *testing.T) {
 	}
 }
 
+// 测试内容：验证邮箱变更 token 为一次性使用，且同一用户新 token 会使旧 token 失效。
+func TestEmailChangeToken_OneTimeAndReplaced(t *testing.T) {
+	setupTestDB(t)
+	resetEmailChangeStore()
+	t.Cleanup(resetEmailChangeStore)
+
+	tok1, err := GenerateEmailChangeToken(1, "old@example.com", "new1@example.com")
+	if err != nil {
+		t.Fatalf("GenerateEmailChangeToken: %v", err)
+	}
+	if _, ok := VerifyEmailChangeToken(tok1); !ok {
+		t.Fatalf("expected token to be valid on first consume")
+	}
+	if _, ok := VerifyEmailChangeToken(tok1); ok {
+		t.Fatalf("expected token to be one-time use")
+	}
+
+	tok2, err := GenerateEmailChangeToken(2, "old@example.com", "new2@example.com")
+	if err != nil {
+		t.Fatalf("GenerateEmailChangeToken: %v", err)
+	}
+	tok3, err := GenerateEmailChangeToken(2, "old@example.com", "new3@example.com")
+	if err != nil {
+		t.Fatalf("GenerateEmailChangeToken: %v", err)
+	}
+	if _, ok := VerifyEmailChangeToken(tok2); ok {
+		t.Fatalf("expected older token to be invalid after replaced by a new one")
+	}
+	item, ok := VerifyEmailChangeToken(tok3)
+	if !ok || item == nil || item.NewEmail != "new3@example.com" {
+		t.Fatalf("expected newest token to be valid, got item=%+v ok=%v", item, ok)
+	}
+}
+
 // 测试内容：验证默认存储配额读取与配置覆盖逻辑。
 func TestGetSystemDefaultStorageQuota(t *testing.T) {
 	setupTestDB(t)

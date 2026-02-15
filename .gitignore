@@ -1,6 +1,7 @@
 .idea/*
 tmp/*
 .cache/*
+.gocache/*
 .air.toml
 config/*
 uploads/*

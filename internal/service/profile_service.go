@@ -122,7 +122,7 @@ func RequestEmailChange(userID uint, password, newEmail string) (string, error) 
 		return "该邮箱已被使用", nil
 	}
 
-	token, err := utils.GenerateEmailChangeToken(user.ID, user.Email, newEmail, 30*time.Minute)
+	token, err := GenerateEmailChangeToken(user.ID, user.Email, newEmail)
 	if err != nil {
 		return "", err
 	}

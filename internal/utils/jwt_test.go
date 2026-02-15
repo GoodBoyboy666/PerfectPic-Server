@@ -58,18 +58,3 @@ func TestEmailToken_RoundTrip(t *testing.T) {
 		t.Fatalf("非预期 claims: %+v", claims)
 	}
 }
-
-// 测试内容：验证邮箱变更令牌生成与解析的往返流程。
-func TestEmailChangeToken_RoundTrip(t *testing.T) {
-	token, err := GenerateEmailChangeToken(1, "old@example.com", "new@example.com", time.Hour)
-	if err != nil {
-		t.Fatalf("GenerateEmailChangeToken: %v", err)
-	}
-	claims, err := ParseEmailChangeToken(token)
-	if err != nil {
-		t.Fatalf("ParseEmailChangeToken: %v", err)
-	}
-	if claims.OldEmail != "old@example.com" || claims.NewEmail != "new@example.com" || claims.Type != "email_change" {
-		t.Fatalf("非预期 claims: %+v", claims)
-	}
-}
