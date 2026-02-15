@@ -18,8 +18,8 @@ func SecurityHeaders() gin.HandlerFunc {
 		// style-src 'self' 'unsafe-inline': 允许同源样式和内联样式 (很多前端框架需要)
 		// script-src 'self': 只允许同源脚本
 		csp := "default-src 'self'; " +
-			"img-src 'self' data: blob: *.geetest.com https://www.google.com https://www.gstatic.com https://*.hcaptcha.com https://hcaptcha.com; " +
-			"style-src 'self' 'unsafe-inline' *.geetest.com https://*.hcaptcha.com https://hcaptcha.com; " +
+			"img-src 'self' data: blob: https://*.geetest.com https://www.google.com https://www.gstatic.com https://*.hcaptcha.com https://hcaptcha.com; " +
+			"style-src 'self' 'unsafe-inline' https://*.geetest.com https://*.hcaptcha.com https://hcaptcha.com; " +
 			"script-src 'self' *.geetest.com https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com https://*.hcaptcha.com https://hcaptcha.com; " +
 			"connect-src 'self' *.geetest.com https://challenges.cloudflare.com https://www.google.com https://*.hcaptcha.com https://hcaptcha.com; " +
 			"object-src 'none'; " +
